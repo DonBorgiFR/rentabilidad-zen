@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { calculateRentalYield, RentalInputs } from './lib/rental-engine';
 import { 
   TrendingUp,
@@ -108,7 +108,7 @@ export default function App() {
               <Building size={20} />
             </div>
             <a href="https://borjafelixrojas.odoo.com/" target="_blank" rel="noopener noreferrer" className="text-sm font-black tracking-[0.3em] hidden sm:block uppercase hover:text-emerald-500 transition-colors">
-              BFR · CONTROL DE GESTIí“N
+              BFR · CONTROL DE GESTIÓN
             </a>
           </div>
           <div className="flex items-center gap-4">

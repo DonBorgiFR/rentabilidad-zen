@@ -1,4 +1,4 @@
-import { jsPDF } from 'jspdf';
+import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 export const exportToPDF = async (elementId: string, filename: string) => {
@@ -6,7 +6,7 @@ export const exportToPDF = async (elementId: string, filename: string) => {
   if (!element) return;
 
   try {
-    const canvas = await html2canvas(element, {
+    const canvas = await (html2canvas as any)(element, {
       scale: 1.5,
       useCORS: true,
       backgroundColor: document.documentElement.classList.contains('dark') ? '#020617' : '#f8fafc',
