@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+﻿import { useState, useMemo, useEffect } from 'react';
 import { calculateRentalYield, RentalInputs } from './lib/rental-engine';
 import { 
   TrendingUp,
@@ -37,10 +37,10 @@ export default function App() {
   const [isExporting, setIsExporting] = useState(false);
   const [activeTab, setActiveTab] = useState<'landlord' | 'tenant'>('landlord');
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [tenantScenario, setTenantScenario] = useState<{name: string, income: number}>({ name: 'Perfil Estándar', income: 2500 });
+  const [tenantScenario, setTenantScenario] = useState<{name: string, income: number}>({ name: 'Perfil EstÃ¡ndar', income: 2500 });
 
   const tenantScenarios = [
-    { name: 'Perfil Estándar', income: 2500 },
+    { name: 'Perfil EstÃ¡ndar', income: 2500 },
     { name: 'Joven (18-35)', income: 1800 },
     { name: 'Pareja Senior', income: 4200 },
     { name: 'Riesgo / Precariedad', income: 1200 }
@@ -108,7 +108,7 @@ export default function App() {
               <Building size={20} />
             </div>
             <a href="https://borjafelixrojas.odoo.com/" target="_blank" rel="noopener noreferrer" className="text-sm font-black tracking-[0.3em] hidden sm:block uppercase hover:text-emerald-500 transition-colors">
-              BFR · CONTROL DE GESTIÓN
+              BFR Â· CONTROL DE GESTIÃ“N
             </a>
           </div>
           <div className="flex items-center gap-4">
@@ -151,7 +151,7 @@ export default function App() {
                 <Building className="text-emerald-600" size={32} />
                 <div className="text-left leading-none">
                   <span className="text-xs font-black tracking-[0.3em] text-slate-400 block mb-1">BORJA FELIX ROJAS</span>
-                  <span className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tighter italic">Auditoría del Escenario Propio</span>
+                  <span className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tighter italic">AuditorÃ­a del Escenario Propio</span>
                 </div>
               </div>
             )}
@@ -163,7 +163,7 @@ export default function App() {
 
             <h1 className="text-5xl lg:text-8xl font-black bg-clip-text text-transparent bg-gradient-to-b from-slate-900 via-emerald-900 to-slate-800 dark:from-white dark:via-emerald-400 dark:to-slate-300 tracking-tight leading-[0.9] uppercase pb-4">
               Control de <br/>
-              <span className="text-emerald-600 dark:text-emerald-400 drop-shadow-sm">Inversión</span>
+              <span className="text-emerald-600 dark:text-emerald-400 drop-shadow-sm">InversiÃ³n</span>
             </h1>
             <p className="mt-4 text-slate-500 dark:text-slate-400 text-lg sm:text-2xl font-medium max-w-4xl mx-auto leading-relaxed">
               Audita tu propia <span className="text-emerald-600 font-bold underline decoration-emerald-500/30 decoration-4 underline-offset-8">realidad financiera</span>. Del caos operativo a la rentabilidad medible.
@@ -182,7 +182,7 @@ export default function App() {
                       <div className="relative z-10">
                         <span className="px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 text-[10px] font-black uppercase tracking-[0.2em] border border-emerald-200 dark:border-emerald-800">Rendimiento Operativo</span>
                         <h2 className="text-3xl font-black mt-6 leading-tight dark:text-white uppercase tracking-tighter">Retorno <br/><span className="text-7xl text-emerald-600">ROE</span></h2>
-                        <p className="text-slate-500 dark:text-slate-400 text-sm mt-4 font-medium leading-relaxed">Rentabilidad sobre el dinero real invertido de tu bolsillo cada año.</p>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm mt-4 font-medium leading-relaxed">Rentabilidad sobre el dinero real invertido de tu bolsillo cada aÃ±o.</p>
                       </div>
                       <div className="mt-8 relative z-10 w-full">
                         <div className="text-6xl sm:text-7xl lg:text-8xl font-black tracking-tighter text-slate-800 dark:text-white flex items-baseline gap-2 leading-tight">
@@ -214,7 +214,7 @@ export default function App() {
                                 <Target size={18} className="text-emerald-500" />
                                 Monitor de Rendimiento Zen
                             </h3>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 italic">Distribución del Flujo de Caja Anual</p>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 italic">DistribuciÃ³n del Flujo de Caja Anual</p>
                         </div>
                         
                         <div className="space-y-8 py-4">
@@ -245,14 +245,14 @@ export default function App() {
                         <div className="pt-8 border-t border-slate-100 dark:border-slate-800 mt-4 flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                <Info size={14} className="text-blue-500" />
-                               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Ratio de Capitalización</span>
+                               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Ratio de CapitalizaciÃ³n</span>
                             </div>
                             <span className="text-xs font-black text-blue-500">{results.rentabilidadNeta.toFixed(1)}% Cap Rate</span>
                         </div>
                     </div>
                 </div>
 
-                {/* Métricas Avanzadas de Gestión (Fase 4) */}
+                {/* MÃ©tricas Avanzadas de GestiÃ³n (Fase 4) */}
                 <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                    <div className="glass-card p-8 bg-white/50 dark:bg-slate-900/50 border-emerald-500/10 dark:border-emerald-500/20 group hover:border-emerald-500/40 transition-colors shadow-none">
                       <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-2">Ingreso Operativo (NOI)</p>
@@ -260,9 +260,9 @@ export default function App() {
                       <p className="text-[9px] text-slate-400 mt-2 font-bold uppercase tracking-tight">Net Operating Income Anual</p>
                    </div>
                    <div className="glass-card p-8 bg-white/50 dark:bg-slate-900/50 border-blue-500/10 dark:border-blue-500/20 group hover:border-blue-500/40 transition-colors shadow-none">
-                      <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-2">Punto de Recuperación</p>
-                      <div className="text-3xl font-black dark:text-white uppercase tracking-tighter">{results.paybackYears === Infinity ? 'í¢Ë†Å¾' : results.paybackYears.toFixed(1)} <span className="text-sm font-light italic">años</span></div>
-                      <p className="text-[9px] text-slate-400 mt-2 font-bold uppercase tracking-tight">Tiempo recuperación equity</p>
+                      <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-2">Punto de RecuperaciÃ³n</p>
+                      <div className="text-3xl font-black dark:text-white uppercase tracking-tighter">{results.paybackYears === Infinity ? 'Ã­Â¢Ã‹â€ Ã…Â¾' : results.paybackYears.toFixed(1)} <span className="text-sm font-light italic">aÃ±os</span></div>
+                      <p className="text-[9px] text-slate-400 mt-2 font-bold uppercase tracking-tight">Tiempo recuperaciÃ³n equity</p>
                    </div>
                    <div className="glass-card p-8 bg-white/50 dark:bg-slate-900/50 border-amber-500/10 dark:border-amber-500/20 group hover:border-amber-500/40 transition-colors shadow-none">
                       <p className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-2">Cash on Cash</p>
@@ -272,7 +272,7 @@ export default function App() {
                    <div className="glass-card p-8 bg-white/50 dark:bg-slate-900/50 border-purple-500/10 dark:border-purple-500/20 group hover:border-purple-500/40 transition-colors shadow-none">
                       <p className="text-[10px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest mb-2">Escudo Fiscal</p>
                       <div className="text-3xl font-black dark:text-white uppercase tracking-tighter">{formatEuro(results.amortizacionInmueble + results.interesesDeduciblesAnuales)}</div>
-                      <p className="text-[9px] text-slate-400 mt-2 font-bold uppercase tracking-tight">Deducción Amort.+Intereses</p>
+                      <p className="text-[9px] text-slate-400 mt-2 font-bold uppercase tracking-tight">DeducciÃ³n Amort.+Intereses</p>
                    </div>
                 </div>
 
@@ -280,7 +280,7 @@ export default function App() {
                    {/* Inputs Sections */}
                    <div className="space-y-6">
                       <InputSection 
-                        title="Adquisición (CAPEX)" 
+                        title="AdquisiciÃ³n (CAPEX)" 
                         icon={<TrendingUp size={20}/>}
                         bg="bg-blue-500/5"
                         iconColor="text-blue-500"
@@ -305,8 +305,8 @@ export default function App() {
                             <ZenInput label="Indice Estatal (Tope)" value={inputs.indiceReferencia || 0} onChange={(v) => setInputs({...inputs, indiceReferencia: v})} />
                             <div className="sm:col-span-2 flex items-center justify-between p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-inner">
                                <div>
-                                  <p className="font-black text-xs uppercase tracking-widest dark:text-white">¿Zona Tensionada?</p>
-                                  <p className="text-[10px] text-slate-400 mt-1">Afecta a prórrogas y topes de precios (Ley 2024)</p>
+                                  <p className="font-black text-xs uppercase tracking-widest dark:text-white">Â¿Zona Tensionada?</p>
+                                  <p className="text-[10px] text-slate-400 mt-1">Afecta a prÃ³rrogas y topes de precios (Ley 2024)</p>
                                </div>
                                <button 
                                 onClick={() => setInputs({...inputs, zonaTensionada: !inputs.zonaTensionada})}
@@ -337,7 +337,7 @@ export default function App() {
                             </div>
                             <div className="space-y-1">
                                <ZenInput label="Tasa Basuras" value={inputs.tasaBasuras} onChange={(v) => setInputs({...inputs, tasaBasuras: v})} />
-                               <p className="text-[9px] text-slate-400 px-4 italic font-medium tracking-tight">Ref: ~60€ - 120€ anual</p>
+                               <p className="text-[9px] text-slate-400 px-4 italic font-medium tracking-tight">Ref: ~60â‚¬ - 120â‚¬ anual</p>
                             </div>
                             <div className="space-y-1">
                                <ZenInput label="Comunidad Mansual" value={inputs.comunidad / 12} onChange={(v) => setInputs({...inputs, comunidad: v * 12})} step={5} />
@@ -352,21 +352,21 @@ export default function App() {
 
                    <div className="space-y-6">
                       <InputSection 
-                        title="Financiación Escalonada" 
+                        title="FinanciaciÃ³n Escalonada" 
                         icon={<Building size={20}/>}
                         bg="bg-indigo-500/5"
                         iconColor="text-indigo-500"
                       >
                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                             <ZenInput label="LTV (% Financia)" value={inputs.ltv} onChange={(v) => setInputs({...inputs, ltv: v})} step={5} />
-                            <ZenInput label="Interés (TIN %)" value={inputs.interes} onChange={(v) => setInputs({...inputs, interes: v})} step={0.1} />
-                            <ZenInput label="Plazo (Años)" value={inputs.plazoAnios} onChange={(v) => setInputs({...inputs, plazoAnios: v})} step={1} />
-                            <ZenInput label="Comisión Apertura" value={inputs.comisionApertura} onChange={(v) => setInputs({...inputs, comisionApertura: v})} />
+                            <ZenInput label="InterÃ©s (TIN %)" value={inputs.interes} onChange={(v) => setInputs({...inputs, interes: v})} step={0.1} />
+                            <ZenInput label="Plazo (AÃ±os)" value={inputs.plazoAnios} onChange={(v) => setInputs({...inputs, plazoAnios: v})} step={1} />
+                            <ZenInput label="ComisiÃ³n Apertura" value={inputs.comisionApertura} onChange={(v) => setInputs({...inputs, comisionApertura: v})} />
                          </div>
                       </InputSection>
 
                       <InputSection 
-                        title="Fiscalidad (Versión 2024)" 
+                        title="Fiscalidad (VersiÃ³n 2024)" 
                         icon={<Scale size={20}/>}
                         bg="bg-rose-500/5"
                         iconColor="text-rose-500"
@@ -374,15 +374,15 @@ export default function App() {
                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                             <ZenInput label="Tu IRPF Marginal (%)" value={inputs.irpfMarginal} onChange={(v) => setInputs({...inputs, irpfMarginal: v})} step={1} />
                             <div className="space-y-4">
-                               <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Reducción Ley Vivienda</label>
+                               <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">ReducciÃ³n Ley Vivienda</label>
                                <select 
                                  value={inputs.tipoReduccion}
                                  onChange={(e) => setInputs({...inputs, tipoReduccion: parseInt(e.target.value) as any})}
                                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-3xl font-black text-sm outline-none shadow-sm focus:ring-2 focus:ring-rose-500/20"
                                >
                                   <option value={50}>50% - General</option>
-                                  <option value={60}>60% - Rehabilitación</option>
-                                  <option value={70}>70% - Jóvenes (18-35)</option>
+                                  <option value={60}>60% - RehabilitaciÃ³n</option>
+                                  <option value={70}>70% - JÃ³venes (18-35)</option>
                                   <option value={90}>90% - Bajada de Renta -5%</option>
                                </select>
                             </div>
@@ -391,7 +391,7 @@ export default function App() {
                                 onClick={() => setShowAdvanced(!showAdvanced)}
                                 className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] text-blue-500 hover:text-blue-600 transition-colors"
                                >
-                                  {showAdvanced ? 'Cerrar Datos Catastrales' : 'Editar Datos Catastrales (Cálculo Amortización)'}
+                                  {showAdvanced ? 'Cerrar Datos Catastrales' : 'Editar Datos Catastrales (CÃ¡lculo AmortizaciÃ³n)'}
                                </button>
                                {showAdvanced && (
                                  <div className="grid grid-cols-2 gap-6 mt-6 animate-fadeIn">
@@ -425,7 +425,7 @@ export default function App() {
                     <div className="grid md:grid-cols-2 gap-16">
                        <div className="space-y-10">
                           <p className="text-xl text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
-                            Bajo la nueva Ley de Vivienda, los derechos del arrendatario están blindados. Selecciona un escenario para auditar la viabilidad.
+                            Bajo la nueva Ley de Vivienda, los derechos del arrendatario estÃ¡n blindados. Selecciona un escenario para auditar la viabilidad.
                           </p>
                           
                           <div className="flex flex-wrap gap-3">
@@ -447,9 +447,9 @@ export default function App() {
 
                           <div className="space-y-6 pt-4">
                              <CheckItem label="Cero Comisiones: La inmobiliaria SIEMPRE la paga el propietario (Art. 20.1 LAU)." />
-                             <CheckItem label="Prórrogas Extraordinarias: Hasta 3 años en zonas tensionadas por vulnerabilidad." />
-                             <CheckItem label="Tope de Subida: Limitado al 3% anual en 2024 y al nuevo índice AEAT en 2025." />
-                             <CheckItem label="Garantías: El propietario no puede pedir más de 2 meses de fianza/garantía adicional." />
+                             <CheckItem label="PrÃ³rrogas Extraordinarias: Hasta 3 aÃ±os en zonas tensionadas por vulnerabilidad." />
+                             <CheckItem label="Tope de Subida: Limitado al 3% anual en 2024 y al nuevo Ã­ndice AEAT en 2025." />
+                             <CheckItem label="GarantÃ­as: El propietario no puede pedir mÃ¡s de 2 meses de fianza/garantÃ­a adicional." />
                           </div>
                        </div>
 
@@ -478,7 +478,7 @@ export default function App() {
                                   "inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest",
                                   inputs.rentaMensual/tenantScenario.income > 0.3 ? "bg-rose-500/20 text-rose-500" : "bg-emerald-500/20 text-emerald-500"
                                 )}>
-                                  {inputs.rentaMensual/tenantScenario.income > 0.3 ? "í¢Å¡Â í¯Â¸  Exceso de Carga (>30%)" : "í¢Å“â€¦ Alquiler Saludable"}
+                                  {inputs.rentaMensual/tenantScenario.income > 0.3 ? "⚠️ Exceso de Carga (>30%)" : "✅ Alquiler Saludable"}
                                 </span>
                              </p>
                           </div>
@@ -492,7 +492,7 @@ export default function App() {
           <footer className="mt-24 py-16 text-center border-t border-slate-100 dark:border-slate-900">
              {isExporting && (
                <div className="mb-12">
-                 <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.4em] mb-4">Análisis Generado el {new Date().toLocaleDateString('es-ES')}</p>
+                 <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.4em] mb-4">AnÃ¡lisis Generado el {new Date().toLocaleDateString('es-ES')}</p>
                  <a 
                    href="https://borjafelixrojas.odoo.com/" 
                    target="_blank" 
@@ -504,7 +504,7 @@ export default function App() {
                </div>
              )}
              <p className="text-slate-300 dark:text-slate-700 text-[10px] tracking-[0.8em] font-black uppercase">
-               ESTRATEGIA · TECNOLOGíA · DATOS · 2026
+               ESTRATEGIA Â· TECNOLOGÃ­ÂA Â· DATOS Â· 2026
              </p>
           </footer>
         </div>
@@ -522,14 +522,14 @@ export default function App() {
                   </div>
                </div>
                <div className="max-w-md text-slate-500 dark:text-slate-400 text-xs font-medium leading-relaxed italic">
-                  Este simulador ha sido concebido bajo la metodología de "Ingeniería de lo Cotidiano", priorizando la densidad de información y la agilidad de cálculo sobre la complejidad administrativa. Un motor Antigravity al servicio de la rentabilidad inmobiliaria.
+                  Este simulador ha sido concebido bajo la metodologÃ­a de "IngenierÃ­a de lo Cotidiano", priorizando la densidad de informaciÃ³n y la agilidad de cÃ¡lculo sobre la complejidad administrativa. Un motor Antigravity al servicio de la rentabilidad inmobiliaria.
                </div>
             </div>
          </div>
       </div>
 
       <div className="py-12 flex justify-center gap-6 animate-fadeIn">
-          <a href="https://borjafelixrojas.odoo.com/" title="Compartir Simulación" className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:text-emerald-500 hover:scale-110 transition-all shadow-xl shadow-slate-200 dark:shadow-none">
+          <a href="https://borjafelixrojas.odoo.com/" title="Compartir SimulaciÃ³n" className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:text-emerald-500 hover:scale-110 transition-all shadow-xl shadow-slate-200 dark:shadow-none">
             <Share2 size={24} />
           </a>
       </div>
@@ -607,7 +607,7 @@ function WhatIfPanel({ results }: { results: any }) {
                 <Lightbulb size={24} />
              </div>
              <div>
-                <h3 className="text-3xl font-black tracking-tighter uppercase italic">Estrategias <span className="text-emerald-500">Optimización</span></h3>
+                <h3 className="text-3xl font-black tracking-tighter uppercase italic">Estrategias <span className="text-emerald-500">OptimizaciÃ³n</span></h3>
                 <p className="text-slate-400 font-medium text-sm mt-1 uppercase tracking-widest">Maximiza tu rentabilidad fiscal y operativa</p>
              </div>
           </div>
@@ -616,13 +616,13 @@ function WhatIfPanel({ results }: { results: any }) {
              <ScenarioCard 
                title="Bajada de Renta -5%"
                impact="+22% Cash Flow"
-               desc="Al bajar un 5% la renta en zona tensionada, activas la reducción del 90% en el IRPF (Ley 2024). El ahorro fiscal supera con creces la pérdida de ingreso bruto."
+               desc="Al bajar un 5% la renta en zona tensionada, activas la reducciÃ³n del 90% en el IRPF (Ley 2024). El ahorro fiscal supera con creces la pÃ©rdida de ingreso bruto."
                result={formatEuro(results.cashFlowAnual * 1.22)}
              />
              <ScenarioCard 
                title="Inquilino Joven (18-35)"
                impact="+9% Neto"
-               desc="Al alquilar a jóvenes en zonas tensionadas, la reducción fiscal sube al 70%. Ideal para maximizar el retorno neto sin bajar el precio de mercado."
+               desc="Al alquilar a jÃ³venes en zonas tensionadas, la reducciÃ³n fiscal sube al 70%. Ideal para maximizar el retorno neto sin bajar el precio de mercado."
                result={formatEuro(results.cashFlowAnual * 1.09)}
                variant="blue"
              />
