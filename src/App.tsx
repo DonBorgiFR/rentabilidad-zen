@@ -2,8 +2,9 @@ import { useState, useMemo, useEffect } from 'react';
 import { calculateRentalYield, RentalInputs } from './lib/rental-engine';
 import { evaluateTenantScenario, TenantInputs } from './lib/tenant-engine';
 import { 
-  TrendingUp, Home, ShieldCheck, Euro, Moon, Sun, ChevronDown, Download, Calculator, Target, Building, Users, Globe, AlertTriangle, CheckCircle2, LineChart, FileText, ArrowRight, ThumbsUp, ThumbsDown, Check
+  TrendingUp, Home, ShieldCheck, Euro, Moon, Sun, ChevronDown, Download, Calculator, Target, Building, Users, Globe, LineChart, FileText, ArrowRight, ThumbsUp, ThumbsDown, Check, Loader2
 } from 'lucide-react';
+import { supabase } from './lib/supabase';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { AuditInput } from './components/AuditInput';
@@ -21,6 +22,29 @@ export default function App() {
   const [isExporting, setIsExporting] = useState(false);
   const [activeTab, setActiveTab] = useState<'landlord' | 'tenant' | null>(null);
   const [feedbackGiven, setFeedbackGiven] = useState(false);
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+
+  const handleFeedbackSubmit = async (score: number) => {
+    setIsSubmittingFeedback(true);
+    try {
+      const { error } = await supabase
+        .from('bfr_feedback_loop')
+        .insert({
+          tool_id: activeTab,
+          feedback_score: score,
+          precio_estimado_bfr: activeTab === 'tenant' ? tenantResults.precioEstimadoMercado : landlordResults.noi,
+          inputs_json: activeTab === 'tenant' ? (tenantInputs as any) : (inputs as any)
+        });
+      
+      if (error) {
+         console.warn("Supabase Warning:", error);
+      }
+    } catch (err) {
+      console.warn("Fetch Exception:", err);
+    }
+    setFeedbackGiven(true);
+    setIsSubmittingFeedback(false);
+  };
 
   // Landlord Inputs
   const [inputs, setInputs] = useState<RentalInputs>({
@@ -413,10 +437,12 @@ export default function App() {
                                 <div className="flex gap-2">
                                    {feedbackGiven ? (
                                       <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 animate-fadeIn bg-emerald-100 dark:bg-emerald-900/30 px-3 py-1.5 rounded-full"><Check size={14}/> Feedback Guardado</span>
+                                   ) : isSubmittingFeedback ? (
+                                      <span className="flex items-center gap-2 text-slate-500 font-bold p-2"><Loader2 size={16} className="animate-spin"/> </span>
                                    ) : (
                                       <>
-                                       <button onClick={() => setFeedbackGiven(true)} className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-emerald-50 hover:border-emerald-300 dark:hover:bg-emerald-900/30 text-slate-500 hover:text-emerald-600 transition-colors shadow-sm" title="Tasación precisa"><ThumbsUp size={18}/></button>
-                                       <button onClick={() => setFeedbackGiven(true)} className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-rose-50 hover:border-rose-300 dark:hover:bg-rose-900/30 text-slate-500 hover:text-rose-600 transition-colors shadow-sm" title="Poco acertada o irreal"><ThumbsDown size={18}/></button>
+                                       <button onClick={() => handleFeedbackSubmit(1)} className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-emerald-50 hover:border-emerald-300 dark:hover:bg-emerald-900/30 text-slate-500 hover:text-emerald-600 transition-colors shadow-sm" title="Tasación precisa"><ThumbsUp size={18}/></button>
+                                       <button onClick={() => handleFeedbackSubmit(-1)} className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-rose-50 hover:border-rose-300 dark:hover:bg-rose-900/30 text-slate-500 hover:text-rose-600 transition-colors shadow-sm" title="Poco acertada o irreal"><ThumbsDown size={18}/></button>
                                       </>
                                    )}
                                 </div>
@@ -653,22 +679,7 @@ function ServiceCard({ icon, title, description, buttonLabel, onClick, color }: 
    )
 }
 
-function TabButton({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string }) {
-  return (
-    <button 
-      onClick={onClick}
-      className={cn(
-        "flex items-center gap-2.5 px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all focus:outline-none flex-shrink-0 cursor-pointer shadow-sm",
-        active 
-          ? "bg-white dark:bg-slate-800/80 text-slate-900 dark:text-white border border-slate-200 dark:border-white/10" 
-          : "text-slate-500 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 hover:text-slate-800 dark:hover:text-slate-300 border border-transparent"
-      )}
-    >
-      {icon}
-      {label}
-    </button>
-  );
-}
+
 
 function InputSection({ title, children, icon, defaultOpen = false }: any) {
   const [isOpen, setIsOpen] = useState(defaultOpen);

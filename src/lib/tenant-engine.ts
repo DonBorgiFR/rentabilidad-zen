@@ -1,85 +1,94 @@
+// Heuristic market price model & Effort Ratio calculator for Tenants
+
 export interface TenantInputs {
-  // Financials
-  ingresoNetoMensual: number;
-  rentaSolicitada: number;
-  mesesFianza: number;
-  mesesGarantiaAdicional: number;
-  otrosGastosIniciales: number; // Mudanza, altas suministros, etc.
+    ingresoNetoMensual: number;
+    rentaSolicitada: number;
+    mesesFianza: number;
+    mesesGarantiaAdicional: number;
+    otrosGastosIniciales: number;
+    
+    // Atributos Inmueble para tasador heurístico
+    metrosCuadrados: number;
+    zona: 'premium' | 'tensionada' | 'media' | 'periferia';
+    estado: 'nuevo' | 'reformado' | 'bueno' | 'origen';
+    habitaciones: number;
+    banos: number;
+    planta?: number;
+    tieneAscensor: boolean;
+    tieneParking: boolean;
+    tieneTerraza: boolean;
+    tieneAireAcondicionado: boolean;
+  }
   
-  // Property details for the comparator
-  metrosCuadrados: number;
-  zona: 'premium' | 'media' | 'periferia' | 'tensionada';
-  estado: 'nuevo' | 'reformado' | 'bueno' | 'origen';
-  habitaciones: number;
-  banos: number;
+  export interface TenantResults {
+    ratioEsfuerzo: number;
+    pagoInicialRequerido: number;
+    precioEstimadoMercado: number;
+    veredictoPrecio: 'Oportunidad' | 'Precio Justo' | 'Sobreprecio Leve' | 'Sobreprecio Severo';
+    diferenciaPorcentaje: number; // Negativo = chollo, Positivo = caro
+    esFavorable: boolean; // Ratio esfuerzo < 33% = Favorable
+  }
   
-  // Amenities (booleans)
-  tieneAscensor: boolean;
-  tieneParking: boolean;
-  tieneTerraza: boolean;
-  tieneAireAcondicionado: boolean;
-}
-
-export interface TenantResults {
-  ratioEsfuerzo: number;
-  esFavorable: boolean;
-  pagoInicialRequerido: number;
-  precioEstimadoMercado: number;
-  diferenciaPorcentaje: number;
-  veredictoPrecio: 'Oportunidad' | 'Precio de Mercado' | 'Sobreprecio Leve' | 'Sobreprecio Severo';
-}
-
-export function evaluateTenantScenario(inputs: TenantInputs): TenantResults {
-  // 1. Financial Viability (Effort Ratio)
-  const ratioEsfuerzo = (inputs.rentaSolicitada / inputs.ingresoNetoMensual) * 100;
-  const esFavorable = ratioEsfuerzo <= 33;
-
-  // 2. Initial Cash Required
-  // Current month + Fianza (1 month legal) + Garantia Adicional (max 2 months legal) + others
-  const pagoInicialRequerido = inputs.rentaSolicitada + 
-                               (inputs.rentaSolicitada * inputs.mesesFianza) + 
-                               (inputs.rentaSolicitada * inputs.mesesGarantiaAdicional) + 
-                               inputs.otrosGastosIniciales;
-
-  // 3. Heuristic Engine: Estimated Market Price
-  // Base price per m2 depending on zone (Simulated average values for Spanish cities/Barcelona context)
-  let precioBaseM2 = 12; 
-  if (inputs.zona === 'premium') precioBaseM2 = 22;
-  else if (inputs.zona === 'tensionada') precioBaseM2 = 18;
-  else if (inputs.zona === 'media') precioBaseM2 = 16;
-  else if (inputs.zona === 'periferia') precioBaseM2 = 13;
-
-  let valorEstimado = inputs.metrosCuadrados * precioBaseM2;
-
-  // Adjustments based on Condition
-  if (inputs.estado === 'nuevo') valorEstimado *= 1.15;
-  if (inputs.estado === 'reformado') valorEstimado *= 1.10;
-  if (inputs.estado === 'origen') valorEstimado *= 0.85;
-
-  // Adjustments based on Features
-  if (inputs.tieneAscensor) valorEstimado *= 1.05; // 5% premium for elevator
-  if (inputs.tieneParking) valorEstimado += 100;   // Flat premium for parking
-  if (inputs.tieneTerraza) valorEstimado *= 1.08;  // 8% premium for terrace
-  if (inputs.tieneAireAcondicionado) valorEstimado *= 1.03; 
-  if (inputs.banos > 1) valorEstimado *= 1.05; // 5% premium for multiple bathrooms
-
-  // Sanity check formatting
-  valorEstimado = Math.round(valorEstimado);
-
-  const diferencia = inputs.rentaSolicitada - valorEstimado;
-  const diferenciaPorcentaje = (diferencia / valorEstimado) * 100;
-
-  let veredictoPrecio: TenantResults['veredictoPrecio'] = 'Precio de Mercado';
-  if (diferenciaPorcentaje < -5) veredictoPrecio = 'Oportunidad';
-  else if (diferenciaPorcentaje > 20) veredictoPrecio = 'Sobreprecio Severo';
-  else if (diferenciaPorcentaje > 5) veredictoPrecio = 'Sobreprecio Leve';
-
-  return {
-    ratioEsfuerzo,
-    esFavorable,
-    pagoInicialRequerido,
-    precioEstimadoMercado: valorEstimado,
-    diferenciaPorcentaje,
-    veredictoPrecio
-  };
-}
+  export function evaluateTenantScenario(inputs: TenantInputs): TenantResults {
+      // 1. Ratio Esfuerzo Financiero
+      const ratioEsfuerzo = (inputs.rentaSolicitada / inputs.ingresoNetoMensual) * 100;
+  
+      // 2. Efectivo de Desembolso Inicial Requerido
+      // Presupone 1 mes de alquiler adelantado (el corriente natural) + fianzas + extra
+      const pagoInicialRequerido = 
+          inputs.rentaSolicitada + 
+          (inputs.rentaSolicitada * inputs.mesesFianza) + 
+          (inputs.rentaSolicitada * inputs.mesesGarantiaAdicional) + 
+          inputs.otrosGastosIniciales;
+  
+      // 3. Heurística de Tasador de Mercado ("Comparador")
+      // Base Price per SQM by Zone
+      const zonePrices = {
+          'premium': 18.5,
+          'tensionada': 15.0,
+          'media': 11.5,
+          'periferia': 9.0
+      };
+      
+      let basePrice = inputs.metrosCuadrados * zonePrices[inputs.zona];
+  
+      // Multipliers / Additions based on features
+      let conditionMultiplier = 1.0;
+      if (inputs.estado === 'nuevo') conditionMultiplier = 1.25;
+      if (inputs.estado === 'reformado') conditionMultiplier = 1.15;
+      if (inputs.estado === 'bueno') conditionMultiplier = 1.0;
+      if (inputs.estado === 'origen') conditionMultiplier = 0.85;
+      
+      basePrice = basePrice * conditionMultiplier;
+  
+      // Additions for Bathrooms/Rooms (basic premium for having more than standard 1B/1B per 50m2)
+      if (inputs.banos > 1) basePrice += (inputs.banos - 1) * 75; 
+      
+      // Fixed extra premiums for highly desired amenities
+      if (inputs.tieneAscensor && (inputs.planta !== undefined && inputs.planta > 1)) basePrice += 60; 
+      else if (inputs.tieneAscensor) basePrice += 50;
+      
+      if (inputs.tieneParking) basePrice += 100;
+      if (inputs.tieneTerraza) basePrice += 80;
+      if (inputs.tieneAireAcondicionado) basePrice += 40;
+  
+      const precioEstimadoMercado = Math.round(basePrice);
+  
+      // 4. Veredicto Final
+      const diferenciaAbsoluta = inputs.rentaSolicitada - precioEstimadoMercado;
+      const diferenciaPorcentaje = (diferenciaAbsoluta / precioEstimadoMercado) * 100;
+  
+      let veredictoPrecio: TenantResults['veredictoPrecio'] = 'Precio Justo';
+      if (diferenciaPorcentaje < -5) veredictoPrecio = 'Oportunidad';
+      else if (diferenciaPorcentaje > 20) veredictoPrecio = 'Sobreprecio Severo';
+      else if (diferenciaPorcentaje > 5) veredictoPrecio = 'Sobreprecio Leve';
+  
+      return {
+          ratioEsfuerzo,
+          pagoInicialRequerido,
+          precioEstimadoMercado,
+          veredictoPrecio,
+          diferenciaPorcentaje,
+          esFavorable: ratioEsfuerzo <= 33
+      };
+  }
