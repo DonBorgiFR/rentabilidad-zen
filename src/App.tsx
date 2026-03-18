@@ -1,30 +1,14 @@
-﻿import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { calculateRentalYield, RentalInputs } from './lib/rental-engine';
+import { evaluateTenantScenario, TenantInputs } from './lib/tenant-engine';
 import { 
-  TrendingUp,
-  Home, 
-  Scale, 
-  ShieldCheck, 
-  Euro,
-  Moon,
-  Sun,
-  ChevronDown,
-  Download,
-  Share2,
-  Calculator,
-  History,
-  Target,
-  CheckCircle2,
-  Building,
-  Users,
-  Info,
-  Lightbulb,
-  Globe
+  TrendingUp, Home, ShieldCheck, Euro, Moon, Sun, ChevronDown, Download, Calculator, Target, Building, Users, Globe, AlertTriangle, CheckCircle2, LineChart, FileText, ArrowRight, ThumbsUp, ThumbsDown, Check
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { ZenInput } from './components/ZenInput';
+import { AuditInput } from './components/AuditInput';
 import { exportToPDF } from './lib/PDFGenerator';
+import { PieChart, Pie, Cell, AreaChart, Area, Tooltip, ResponsiveContainer } from 'recharts';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -35,17 +19,10 @@ const formatEuro = (v: number) => new Intl.NumberFormat('es-ES', { style: 'curre
 export default function App() {
   const [isDark, setIsDark] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'landlord' | 'tenant'>('landlord');
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [tenantScenario, setTenantScenario] = useState<{name: string, income: number}>({ name: 'Perfil EstÃ¡ndar', income: 2500 });
+  const [activeTab, setActiveTab] = useState<'landlord' | 'tenant' | null>(null);
+  const [feedbackGiven, setFeedbackGiven] = useState(false);
 
-  const tenantScenarios = [
-    { name: 'Perfil EstÃ¡ndar', income: 2500 },
-    { name: 'Joven (18-35)', income: 1800 },
-    { name: 'Pareja Senior', income: 4200 },
-    { name: 'Riesgo / Precariedad', income: 1200 }
-  ];
-
+  // Landlord Inputs
   const [inputs, setInputs] = useState<RentalInputs>({
     precioCompra: 200000,
     itpIva: 10,
@@ -74,7 +51,28 @@ export default function App() {
     tipoReduccion: 50,
   });
 
-  const results = useMemo(() => calculateRentalYield(inputs), [inputs]);
+  const landlordResults = useMemo(() => calculateRentalYield(inputs), [inputs]);
+
+  // Tenant Inputs
+  const [tenantInputs, setTenantInputs] = useState<TenantInputs>({
+    ingresoNetoMensual: 2500,
+    rentaSolicitada: 950,
+    mesesFianza: 1,
+    mesesGarantiaAdicional: 1,
+    otrosGastosIniciales: 500,
+    metrosCuadrados: 80,
+    zona: 'media',
+    estado: 'bueno',
+    habitaciones: 2,
+    banos: 1,
+    planta: 2,
+    tieneAscensor: true,
+    tieneParking: false,
+    tieneTerraza: false,
+    tieneAireAcondicionado: true
+  });
+
+  const tenantResults = useMemo(() => evaluateTenantScenario(tenantInputs), [tenantInputs]);
 
   useEffect(() => {
     if (isDark) {
@@ -84,468 +82,586 @@ export default function App() {
     }
   }, [isDark]);
 
-  const chartData = [
-    { name: 'Flujo Caja', value: Math.max(0, results.cashFlowAnual), color: '#10b981' },
-    { name: 'Gastos Op.', value: results.gastosOperativosAnuales, color: '#3b82f6' },
-    { name: 'Hipoteca', value: results.cuotaHipotecariaMensual * 12, color: '#f59e0b' },
-    { name: 'Impuestos', value: results.cuotaIrpfAnual, color: '#ef4444' },
+  // Data for Charts
+  const tenantGaugeData = [
+    { name: 'Esfuerzo', value: tenantResults.ratioEsfuerzo, color: tenantResults.esFavorable ? '#10b981' : '#f43f5e' },
+    { name: 'Libre', value: Math.max(0, 100 - tenantResults.ratioEsfuerzo), color: isDark ? '#1e293b' : '#f1f5f9' }
   ];
 
+  const initialCashData = [
+    { name: 'Primer Mes', value: tenantInputs.rentaSolicitada, color: '#3b82f6' },
+    { name: 'Fianza', value: tenantInputs.rentaSolicitada * tenantInputs.mesesFianza, color: '#10b981' },
+    { name: 'Garantía Extra', value: tenantInputs.rentaSolicitada * tenantInputs.mesesGarantiaAdicional, color: '#f59e0b' },
+    { name: 'Otros (Mudanza)', value: tenantInputs.otrosGastosIniciales, color: '#8b5cf6' }
+  ].filter(d => d.value > 0);
+
+  const landlordExpensesData = [
+    { name: 'Hipoteca', value: landlordResults.cuotaHipotecariaMensual * 12, color: '#3b82f6' },
+    { name: 'Comunidad + IBI', value: inputs.comunidad + inputs.ibi, color: '#eab308' },
+    { name: 'Seguros', value: inputs.seguroHogar + inputs.seguroImpago, color: '#f97316' },
+    { name: 'Mantenimiento', value: inputs.mantenimientoEstimado, color: '#64748b' }
+  ].filter(d => d.value > 0);
+
+  const landlordProjectionData = useMemo(() => {
+    return Array.from({length: 10}, (_, i) => ({
+      year: `Año ${i+1}`,
+      FlujoNeto: Math.round(landlordResults.cashFlowAnual * Math.pow(1.02, i)), 
+      GastosTotales: Math.round(landlordResults.gastosOperativosAnuales * Math.pow(1.03, i)) 
+    }));
+  }, [landlordResults.cashFlowAnual, landlordResults.gastosOperativosAnuales]);
+
   return (
-    <div className="min-h-screen relative overflow-x-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 selection:bg-emerald-500/30 transition-colors duration-500 font-sans pb-20">
-      {/* Background Animated Elements */}
+    <div className="min-h-screen relative overflow-x-hidden bg-slate-50 dark:bg-[#0a0f1c] text-slate-900 dark:text-slate-50 transition-colors duration-500 font-sans pb-20 selection:bg-emerald-500/30">
+      
+      {/* Vibe: Elegant Architectural Background Elements */}
       <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-emerald-400/20 dark:bg-emerald-600/5 rounded-full blur-[120px] mix-blend-multiply dark:mix-blend-lighten animate-blob" />
-        <div className="absolute top-[20%] right-[-10%] w-[40%] h-[60%] bg-blue-400/20 dark:bg-blue-600/5 rounded-full blur-[120px] mix-blend-multiply dark:mix-blend-lighten animate-blob animation-delay-2000" />
-        <div className="absolute bottom-[-20%] left-[20%] w-[60%] h-[40%] bg-purple-400/20 dark:bg-purple-600/5 rounded-full blur-[120px] mix-blend-multiply dark:mix-blend-lighten animate-blob animation-delay-4000" />
+         <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-emerald-500/10 dark:bg-emerald-500/5 blur-[120px]" />
+         <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] rounded-full bg-blue-500/10 dark:bg-blue-500/5 blur-[120px]" />
+         <div className="absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.05)_1px,transparent_1px)] bg-[size:64px_64px]" />
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 lg:pt-12">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 lg:pt-10">
         {/* Top Navbar */}
-        <div className="flex justify-between items-center mb-12 animate-fadeIn">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white shadow-xl shadow-emerald-500/30">
-              <Building size={20} />
+        <div className="flex justify-between items-center mb-10 animate-fadeIn backdrop-blur-md bg-white/50 dark:bg-[#0a0f1c]/50 p-4 rounded-3xl border border-white/20 dark:border-white/5 shadow-sm">
+          <div className="flex items-center gap-4 cursor-pointer" onClick={() => setActiveTab(null)}>
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-xl bg-gradient-to-br from-slate-800 to-slate-950 dark:from-slate-800 dark:to-[#0f172a] overflow-hidden relative group">
+               <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/30 to-blue-500/30 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+               <LineChart size={24} className="group-hover:scale-110 transition-transform duration-500 relative z-10 text-emerald-400" />
+               <div className="absolute bottom-0 w-full h-1/2 bg-gradient-to-t from-black/50 to-transparent" />
             </div>
-            <a href="https://borjafelixrojas.odoo.com/" target="_blank" rel="noopener noreferrer" className="text-sm font-black tracking-[0.3em] hidden sm:block uppercase hover:text-emerald-500 transition-colors">
-              BFR Â· CONTROL DE GESTIÃ“N
-            </a>
+            <div>
+               <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white group-hover:text-emerald-500 transition-colors">
+                  BFR <span className="font-light">Properties</span>
+               </h2>
+               <span className="text-[10px] uppercase tracking-[0.3em] font-bold text-slate-500 dark:text-slate-400">Inteligencia Inmobiliaria</span>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <a 
               href="https://borjafelixrojas.odoo.com/" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:scale-110 hover:text-emerald-500 transition-all focus:outline-none"
-              title="Visitar Web"
+              className="p-3 rounded-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/50 shadow-sm hover:text-emerald-600 dark:hover:text-emerald-400 transition-all focus:outline-none"
+              title="Portal de Consultoría"
             >
-              <Globe size={20} />
+              <Globe size={18} />
             </a>
             <button 
-              onClick={() => setIsDark(!isDark)}
-              className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:scale-110 transition-all focus:outline-none"
-              title="Toggle Theme"
+               onClick={() => setIsDark(!isDark)}
+               className="p-3 rounded-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/50 shadow-sm hover:text-emerald-600 dark:hover:text-amber-400 transition-all focus:outline-none"
+               title="Alternar Tema"
             >
-              {isDark ? <Sun size={20} className="text-amber-400" /> : <Moon size={20} className="text-slate-600" />}
+               {isDark ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} className="text-slate-600" />}
             </button>
-            <button 
-              onClick={async () => {
-                setIsExporting(true);
-                await new Promise(r => setTimeout(r, 100));
-                await exportToPDF('rental-app-content', 'Informe-Rentabilidad-Zen-BFR');
-                setIsExporting(false);
-              }}
-              className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-emerald-600 text-white font-bold shadow-xl shadow-emerald-500/20 hover:shadow-emerald-500/40 transition-all hover:-translate-y-1 active:scale-95 disabled:opacity-50"
-              disabled={isExporting}
-            >
-              <Download size={18} className={cn(isExporting && "animate-bounce")} />
-              <span className="hidden sm:inline">{isExporting ? 'Generando...' : 'Exportar Informe'}</span>
-            </button>
+            {activeTab && (
+               <button 
+                 onClick={async () => {
+                   setIsExporting(true);
+                   await new Promise(r => setTimeout(r, 100));
+                   await exportToPDF('dossier-inmobiliario-bfr', `Dossier-BFR-${activeTab}`);
+                   setIsExporting(false);
+                 }}
+                 className="hidden sm:flex items-center gap-2 ml-2 px-6 py-3 rounded-xl bg-slate-900 dark:bg-emerald-600 text-white font-bold shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:-translate-y-0.5 transition-all focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed border border-white/10"
+                 disabled={isExporting}
+               >
+                 <Download size={18} className={cn(isExporting && "animate-bounce")} />
+                 <span className="text-sm tracking-wide">Descargar Dossier</span>
+               </button>
+            )}
           </div>
         </div>
 
-        <div id="rental-app-content" className="bg-slate-50 dark:bg-slate-950 rounded-[3rem] p-4 sm:p-8 lg:p-12 mb-8 transition-colors duration-500">
-          <header className="mb-16 text-center animate-fadeIn animation-delay-200">
+        {/* Hero Section if no tab selected */}
+        {!activeTab && (
+           <div className="min-h-[70vh] flex flex-col justify-center animate-fadeIn relative">
+              <div className="max-w-3xl mb-16">
+                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-200/50 dark:bg-slate-800/50 backdrop-blur-md text-slate-700 dark:text-slate-300 text-[11px] font-bold uppercase tracking-widest mb-8 border border-white/20 dark:border-white/5">
+                    <Building size={14} className="text-emerald-500" /> Consultoría de Mercado
+                 </div>
+                 <h1 className="text-5xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.05] mb-6 drop-shadow-sm">
+                    El valor real de una <br/>
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-blue-600 dark:from-emerald-400 dark:to-blue-400 italic font-serif">propiedad.</span>
+                 </h1>
+                 <p className="text-lg lg:text-xl text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed font-medium">
+                    Plataforma analítica avanzada para evaluar arrendamientos y adquisiciones. Genera tu <strong className="text-slate-900 dark:text-slate-200">Dossier Inmobiliario</strong> al instante.
+                 </p>
+              </div>
+              
+              <div className="grid md:grid-cols-2 gap-6 w-full max-w-5xl">
+                 <ServiceCard 
+                    icon={<Users size={28} className="text-emerald-500" />}
+                    title="Inquilinos"
+                    description="Simula tu ratio de esfuerzo, examina el precio de mercado y prevé tus gastos iniciales antes de alquilar."
+                    onClick={() => setActiveTab('tenant')}
+                    buttonLabel="Auditar Alquiler"
+                    color="emerald"
+                 />
+                 <ServiceCard 
+                    icon={<Home size={28} className="text-blue-500" />}
+                    title="Propietarios / Inversores"
+                    description="Analiza la rentabilidad operativa y financiera cruzando OPEX, CAPEX y beneficios fiscales de la legislación actual."
+                    onClick={() => setActiveTab('landlord')}
+                    buttonLabel="Generar Dossier ROI"
+                    color="blue"
+                 />
+              </div>
+           </div>
+        )}
+
+        {/* Dashboard Content */}
+        {activeTab && (
+        <div id="dossier-inmobiliario-bfr" className="bg-white/80 dark:bg-[#0f172a]/90 backdrop-blur-2xl rounded-[2.5rem] border border-slate-200 dark:border-white/5 p-6 sm:p-12 shadow-2xl shadow-slate-300/30 dark:shadow-[0_0_50px_rgba(0,0,0,0.3)] mb-8 transition-colors duration-500">
+          
+          <header className="mb-14 relative z-10 border-b border-slate-200 dark:border-slate-800/60 pb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+            <div>
+               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 mb-4 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition" onClick={() => setActiveTab(null)}>
+                  <ChevronDown size={14} className="rotate-90 text-slate-500" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300">Cambiar Dossier</span>
+               </div>
+               <h1 className="text-3xl lg:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+                 {activeTab === 'tenant' ? 'Dossier de Inquilino' : 'Dossier de Inversión'}
+               </h1>
+               <p className="text-sm font-medium text-slate-500 mt-2">
+                 {activeTab === 'tenant' ? 'Análisis de viabilidad financiera y tasación de mercado para arrendatarios.' : 'Auditoría de rentabilidad operativa, fiscalidad e impacto del apalancamiento.'}
+               </p>
+            </div>
+            
             {isExporting && (
-              <div className="mb-12 p-6 rounded-3xl border-2 border-emerald-600/20 inline-flex items-center gap-4 bg-white dark:bg-slate-900 mx-auto shadow-2xl">
-                <Building className="text-emerald-600" size={32} />
-                <div className="text-left leading-none">
-                  <span className="text-xs font-black tracking-[0.3em] text-slate-400 block mb-1">BORJA FELIX ROJAS</span>
-                  <span className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tighter italic">AuditorÃ­a del Escenario Propio</span>
+              <div className="p-4 border border-emerald-500/30 rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 flex items-center gap-4 min-w-[300px]">
+                <FileText className="text-emerald-600 dark:text-emerald-400" size={28} />
+                <div className="leading-tight">
+                  <span className="text-[10px] font-bold tracking-widest text-emerald-600/70 dark:text-emerald-400/70 block mb-1">DOSSIER TÉCNICO BFR</span>
+                  <span className="text-sm font-black text-emerald-900 dark:text-emerald-100 uppercase">
+                    CONFIDENCIAL
+                  </span>
                 </div>
               </div>
             )}
-            
-            <div className="inline-flex bg-white/50 dark:bg-slate-900/50 p-1.5 rounded-full border border-slate-200 dark:border-slate-800 mb-10 scale-110">
-              <TabButton active={activeTab === 'landlord'} onClick={() => setActiveTab('landlord')} icon={<Home size={18}/>} label="Arrendador" />
-              <TabButton active={activeTab === 'tenant'} onClick={() => setActiveTab('tenant')} icon={<Users size={18}/>} label="Arrendatario" />
-            </div>
-
-            <h1 className="text-5xl lg:text-8xl font-black bg-clip-text text-transparent bg-gradient-to-b from-slate-900 via-emerald-900 to-slate-800 dark:from-white dark:via-emerald-400 dark:to-slate-300 tracking-tight leading-[0.9] uppercase pb-4">
-              Control de <br/>
-              <span className="text-emerald-600 dark:text-emerald-400 drop-shadow-sm">InversiÃ³n</span>
-            </h1>
-            <p className="mt-4 text-slate-500 dark:text-slate-400 text-lg sm:text-2xl font-medium max-w-4xl mx-auto leading-relaxed">
-              Audita tu propia <span className="text-emerald-600 font-bold underline decoration-emerald-500/30 decoration-4 underline-offset-8">realidad financiera</span>. Del caos operativo a la rentabilidad medible.
-            </p>
           </header>
 
-          <main className="animate-fadeIn animation-delay-500">
-            {activeTab === 'landlord' ? (
-              <div className="grid lg:grid-cols-12 gap-12 items-start">
-                {/* Dashboard de Resultados */}
-                <div className="lg:col-span-12 grid md:grid-cols-3 gap-8 mb-8">
-                   <div className="glass-card p-10 flex flex-col justify-between group overflow-hidden relative border-emerald-500/10 dark:border-emerald-500/20 bg-emerald-600/5">
-                      <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform duration-700">
-                        <TrendingUp size={220} />
-                      </div>
-                      <div className="relative z-10">
-                        <span className="px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 text-[10px] font-black uppercase tracking-[0.2em] border border-emerald-200 dark:border-emerald-800">Rendimiento Operativo</span>
-                        <h2 className="text-3xl font-black mt-6 leading-tight dark:text-white uppercase tracking-tighter">Retorno <br/><span className="text-7xl text-emerald-600">ROE</span></h2>
-                        <p className="text-slate-500 dark:text-slate-400 text-sm mt-4 font-medium leading-relaxed">Rentabilidad sobre el dinero real invertido de tu bolsillo cada aÃ±o.</p>
-                      </div>
-                      <div className="mt-8 relative z-10 w-full">
-                        <div className="text-6xl sm:text-7xl lg:text-8xl font-black tracking-tighter text-slate-800 dark:text-white flex items-baseline gap-2 leading-tight">
-                          {results.roe.toFixed(1)}<span className="text-2xl text-emerald-400 font-light tracking-normal italic ml-2">%</span>
-                        </div>
-                      </div>
-                   </div>
-
-                   <div className="glass-card p-10 flex flex-col justify-between group overflow-hidden relative border-blue-500/10 dark:border-blue-500/20 bg-blue-600/5">
-                      <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:rotate-12 transition-transform duration-1000">
-                        <Euro size={220} />
-                      </div>
-                      <div className="relative z-10">
-                        <span className="px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 text-[10px] font-black uppercase tracking-[0.2em] border border-blue-200 dark:border-blue-800">Flujo de Caja Anual</span>
-                        <h2 className="text-3xl font-black mt-6 leading-tight dark:text-white uppercase tracking-tighter">Cash <br/><span className="text-7xl text-blue-600">Neto</span></h2>
-                        <p className="text-slate-500 dark:text-slate-400 text-sm mt-4 font-medium leading-relaxed">Dinero que queda en tu cuenta tras pagar hipoteca, gastos e impuestos.</p>
-                      </div>
-                      <div className="mt-8 relative z-10 w-full">
-                        <div className="text-5xl sm:text-6xl lg:text-7xl font-black tracking-tighter text-slate-800 dark:text-white flex items-baseline gap-2 leading-tight">
-                          {formatEuro(results.cashFlowAnual)}
-                        </div>
-                      </div>
-                   </div>
-
-                   {/* Yield Flow Meter (Linear "Thermometer" style) */}
-                    <div className="glass-card p-10 flex flex-col justify-between h-full bg-white/50 dark:bg-slate-900/50 border-emerald-500/5">
-                        <div className="mb-4">
-                            <h3 className="text-xl font-black dark:text-white uppercase tracking-tighter flex items-center gap-3">
-                                <Target size={18} className="text-emerald-500" />
-                                Monitor de Rendimiento Zen
-                            </h3>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 italic">DistribuciÃ³n del Flujo de Caja Anual</p>
-                        </div>
-                        
-                        <div className="space-y-8 py-4">
-                           {chartData.map((d) => {
-                             const total = chartData.reduce((acc, curr) => acc + curr.value, 0);
-                             const percentage = (d.value / total) * 100;
-                             return (
-                               <div key={d.name} className="space-y-3 group/meter">
-                                  <div className="flex justify-between items-end">
-                                     <span className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">{d.name}</span>
-                                     <span className="text-sm font-black dark:text-white">{formatEuro(d.value)}</span>
-                                  </div>
-                                  <div className="h-3 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200/20 dark:border-white/5">
-                                     <div 
-                                      className="h-full rounded-full transition-all duration-1000 ease-out"
-                                      style={{ 
-                                        width: `${percentage}%`, 
-                                        backgroundColor: d.color,
-                                        boxShadow: `0 0 20px -5px ${d.color}`
-                                      }}
-                                     />
-                                  </div>
-                               </div>
-                             );
-                           })}
-                        </div>
-
-                        <div className="pt-8 border-t border-slate-100 dark:border-slate-800 mt-4 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                               <Info size={14} className="text-blue-500" />
-                               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Ratio de CapitalizaciÃ³n</span>
-                            </div>
-                            <span className="text-xs font-black text-blue-500">{results.rentabilidadNeta.toFixed(1)}% Cap Rate</span>
-                        </div>
+          <main>
+            {activeTab === 'tenant' ? (
+              <div className="space-y-12 animate-fadeIn max-w-6xl mx-auto">
+                 {/* Dossier Inquilino - Top Metrics */}
+                 <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-6 items-stretch">
+                    
+                    {/* Ratio de Esfuerzo */}
+                    <div className={cn(
+                       "relative min-h-[280px] p-8 rounded-3xl border shadow-sm flex flex-col justify-between overflow-hidden",
+                       tenantResults.esFavorable 
+                         ? "bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/20 dark:to-slate-900 border-emerald-200 dark:border-emerald-800/50" 
+                         : "bg-gradient-to-br from-rose-50 to-white dark:from-rose-950/20 dark:to-slate-900 border-rose-200 dark:border-rose-800/50"
+                    )}>
+                       <MetricTitle 
+                          title="Ratio de Esfuerzo Mensual" 
+                          description="Impacto del alquiler sobre tus ingresos netos mensuales garantizados." 
+                       />
+                       
+                       <div className="relative h-[130px] w-full mx-auto -mb-4 mt-2">
+                         <ResponsiveContainer width="100%" height="100%">
+                           <PieChart>
+                             <Pie data={tenantGaugeData} cx="50%" cy="100%" startAngle={180} endAngle={0} innerRadius={80} outerRadius={110} paddingAngle={2} dataKey="value" stroke="none" cornerRadius={6}>
+                               {tenantGaugeData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                             </Pie>
+                           </PieChart>
+                         </ResponsiveContainer>
+                         <div className="absolute bottom-0 left-0 right-0 text-center flex justify-center items-end pb-1">
+                            <span className={cn("text-5xl font-black drop-shadow-sm", tenantResults.esFavorable ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
+                               {tenantResults.ratioEsfuerzo.toFixed(1)}<span className="text-2xl opacity-75">%</span>
+                            </span>
+                         </div>
+                       </div>
                     </div>
-                </div>
 
-                {/* MÃ©tricas Avanzadas de GestiÃ³n (Fase 4) */}
-                <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                   <div className="glass-card p-8 bg-white/50 dark:bg-slate-900/50 border-emerald-500/10 dark:border-emerald-500/20 group hover:border-emerald-500/40 transition-colors shadow-none">
-                      <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-2">Ingreso Operativo (NOI)</p>
-                      <div className="text-3xl font-black dark:text-white uppercase tracking-tighter">{formatEuro(results.noi)}</div>
-                      <p className="text-[9px] text-slate-400 mt-2 font-bold uppercase tracking-tight">Net Operating Income Anual</p>
-                   </div>
-                   <div className="glass-card p-8 bg-white/50 dark:bg-slate-900/50 border-blue-500/10 dark:border-blue-500/20 group hover:border-blue-500/40 transition-colors shadow-none">
-                      <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-2">Punto de RecuperaciÃ³n</p>
-                      <div className="text-3xl font-black dark:text-white uppercase tracking-tighter">{results.paybackYears === Infinity ? 'Ã­Â¢Ã‹â€ Ã…Â¾' : results.paybackYears.toFixed(1)} <span className="text-sm font-light italic">aÃ±os</span></div>
-                      <p className="text-[9px] text-slate-400 mt-2 font-bold uppercase tracking-tight">Tiempo recuperaciÃ³n equity</p>
-                   </div>
-                   <div className="glass-card p-8 bg-white/50 dark:bg-slate-900/50 border-amber-500/10 dark:border-amber-500/20 group hover:border-amber-500/40 transition-colors shadow-none">
-                      <p className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-2">Cash on Cash</p>
-                      <div className="text-3xl font-black dark:text-white uppercase tracking-tighter">{results.roe.toFixed(1)}<span className="text-sm">%</span></div>
-                      <p className="text-[9px] text-slate-400 mt-2 font-bold uppercase tracking-tight">Rendimiento capital activo</p>
-                   </div>
-                   <div className="glass-card p-8 bg-white/50 dark:bg-slate-900/50 border-purple-500/10 dark:border-purple-500/20 group hover:border-purple-500/40 transition-colors shadow-none">
-                      <p className="text-[10px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest mb-2">Escudo Fiscal</p>
-                      <div className="text-3xl font-black dark:text-white uppercase tracking-tighter">{formatEuro(results.amortizacionInmueble + results.interesesDeduciblesAnuales)}</div>
-                      <p className="text-[9px] text-slate-400 mt-2 font-bold uppercase tracking-tight">DeducciÃ³n Amort.+Intereses</p>
-                   </div>
-                </div>
+                    {/* Efectivo Inicial */}
+                    <div className="relative min-h-[280px] p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+                       <div>
+                          <MetricTitle 
+                             title="Desembolso Inicial" 
+                             description="Efectivo líquido calculado para la firma de contrato incluyendo provisión de mudanza." 
+                          />
+                          <div className="text-4xl font-black text-slate-900 dark:text-white mt-4">
+                             {formatEuro(tenantResults.pagoInicialRequerido)}
+                          </div>
+                       </div>
 
-                <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                   {/* Inputs Sections */}
-                   <div className="space-y-6">
-                      <InputSection 
-                        title="AdquisiciÃ³n (CAPEX)" 
-                        icon={<TrendingUp size={20}/>}
-                        bg="bg-blue-500/5"
-                        iconColor="text-blue-500"
-                        defaultOpen={true}
-                      >
-                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                            <ZenInput label="Precio Compra" value={inputs.precioCompra} onChange={(v) => setInputs({...inputs, precioCompra: v})} />
-                            <ZenInput label="ITP / IVA (%)" value={inputs.itpIva} onChange={(v) => setInputs({...inputs, itpIva: v})} step={1} />
-                            <ZenInput label="Reforma / Mobiliario" value={inputs.reformaCoste + inputs.mobiliario} onChange={(v) => setInputs({...inputs, reformaCoste: v})} />
-                            <ZenInput label="Gastos Escritura" value={inputs.gastosEscritura} onChange={(v) => setInputs({...inputs, gastosEscritura: v})} />
-                         </div>
-                      </InputSection>
-
-                      <InputSection 
-                        title="Ingresos Corrientes" 
-                        icon={<Euro size={20}/>}
-                        bg="bg-emerald-500/5"
-                        iconColor="text-emerald-500"
-                      >
-                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                            <ZenInput label="Renta Mensual" value={inputs.rentaMensual} onChange={(v) => setInputs({...inputs, rentaMensual: v})} />
-                            <ZenInput label="Indice Estatal (Tope)" value={inputs.indiceReferencia || 0} onChange={(v) => setInputs({...inputs, indiceReferencia: v})} />
-                            <div className="sm:col-span-2 flex items-center justify-between p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-inner">
-                               <div>
-                                  <p className="font-black text-xs uppercase tracking-widest dark:text-white">Â¿Zona Tensionada?</p>
-                                  <p className="text-[10px] text-slate-400 mt-1">Afecta a prÃ³rrogas y topes de precios (Ley 2024)</p>
+                       <div className="mt-6 border-t border-slate-100 dark:border-slate-800 pt-6">
+                           <div className="flex h-4 w-full rounded-full overflow-hidden shadow-inner bg-slate-100 dark:bg-slate-800">
+                             {initialCashData.map(d => (
+                               <div key={d.name} style={{ width: `${(d.value / tenantResults.pagoInicialRequerido) * 100}%`, backgroundColor: d.color }} className="relative border-r border-white/20 last:border-0 hover:brightness-110 transition-all cursor-pointer" title={`${d.name}: ${formatEuro(d.value)}`} />
+                             ))}
+                           </div>
+                           <div className="grid grid-cols-2 gap-y-3 mt-5">
+                             {initialCashData.map(d => (
+                               <div key={d.name} className="flex items-center gap-2 text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                                 <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: d.color }}></div>
+                                 <span className="truncate" title={d.name}>{d.name}</span>
                                </div>
-                               <button 
-                                onClick={() => setInputs({...inputs, zonaTensionada: !inputs.zonaTensionada})}
-                                className={cn(
-                                  "w-16 h-8 rounded-full transition-all relative p-1",
-                                  inputs.zonaTensionada ? "bg-emerald-500" : "bg-slate-200 dark:bg-slate-800"
-                                )}
-                               >
-                                  <div className={cn(
-                                    "w-6 h-6 bg-white rounded-full shadow-lg transition-transform",
-                                    inputs.zonaTensionada ? "translate-x-8" : "translate-x-0"
-                                  )} />
-                               </button>
-                            </div>
-                         </div>
-                      </InputSection>
+                             ))}
+                           </div>
+                       </div>
+                    </div>
 
-                      <InputSection 
-                        title="Gastos (OPEX) Anuales" 
-                        icon={<ShieldCheck size={20}/>}
-                        bg="bg-amber-500/5"
-                        iconColor="text-amber-500"
-                      >
-                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                            <div className="space-y-1">
-                               <ZenInput label="IBI Anual" value={inputs.ibi} onChange={(v) => setInputs({...inputs, ibi: v})} />
-                               <p className="text-[9px] text-slate-400 px-4 italic font-medium tracking-tight">Ref: ~0.4% - 1.1% valor catastral</p>
-                            </div>
-                            <div className="space-y-1">
-                               <ZenInput label="Tasa Basuras" value={inputs.tasaBasuras} onChange={(v) => setInputs({...inputs, tasaBasuras: v})} />
-                               <p className="text-[9px] text-slate-400 px-4 italic font-medium tracking-tight">Ref: ~60â‚¬ - 120â‚¬ anual</p>
-                            </div>
-                            <div className="space-y-1">
-                               <ZenInput label="Comunidad Mansual" value={inputs.comunidad / 12} onChange={(v) => setInputs({...inputs, comunidad: v * 12})} step={5} />
-                               <p className="text-[9px] text-slate-400 px-4 italic font-medium tracking-tight">Ref: {formatEuro(inputs.comunidad)} anual</p>
-                            </div>
-                             <ZenInput label="Seguro Hogar (Anual)" value={inputs.seguroHogar} onChange={(v) => setInputs({...inputs, seguroHogar: v})} />
-                             <ZenInput label="Seguro Impago (Anual)" value={inputs.seguroImpago} onChange={(v) => setInputs({...inputs, seguroImpago: v})} />
-                            <ZenInput label="Mantenimiento Est." value={inputs.mantenimientoEstimado} onChange={(v) => setInputs({...inputs, mantenimientoEstimado: v})} />
-                         </div>
-                      </InputSection>
-                   </div>
+                    {/* Comparador de Mercado */}
+                    <div className={cn(
+                       "relative min-h-[280px] p-8 rounded-3xl border shadow-sm flex flex-col justify-between md:col-span-2 lg:col-span-1",
+                       tenantResults.diferenciaPorcentaje > 5 ? "bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800/50" 
+                       : tenantResults.diferenciaPorcentaje < -5 ? "bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800/50"
+                       : "bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800/50"
+                    )}>
+                       <div>
+                          <MetricTitle 
+                             title="Veredicto Estructural" 
+                             description="Evaluación de la renta solicitada vs tasación heurística." 
+                          />
+                          <div className={cn(
+                             "text-3xl font-black uppercase tracking-tight mt-2",
+                             tenantResults.diferenciaPorcentaje > 5 ? "text-amber-600" 
+                             : tenantResults.diferenciaPorcentaje < -5 ? "text-emerald-600"
+                             : "text-blue-600"
+                          )}>
+                             {tenantResults.veredictoPrecio}
+                          </div>
+                       </div>
+                       
+                       <div className="my-6">
+                          <div className="relative w-full h-3 bg-slate-200/50 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner">
+                             <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-slate-500 z-10 opacity-50"></div>
+                             <div 
+                                className={cn("absolute top-0 h-full rounded-full transition-all duration-700", tenantResults.diferenciaPorcentaje > 5 ? "bg-rose-500" : tenantResults.diferenciaPorcentaje < -5 ? "bg-emerald-500" : "bg-blue-500")}
+                                style={{ 
+                                   left: tenantResults.diferenciaPorcentaje > 0 ? '50%' : `${Math.max(0, 50 + tenantResults.diferenciaPorcentaje)}%`,
+                                   width: `${Math.min(50, Math.abs(tenantResults.diferenciaPorcentaje))}%` 
+                                }} 
+                             />
+                          </div>
+                          <div className="flex justify-between text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase mt-2 px-1">
+                             <span>(-50%)</span>
+                             <span>Mercado</span>
+                             <span>(+50%)</span>
+                          </div>
+                       </div>
 
-                   <div className="space-y-6">
-                      <InputSection 
-                        title="FinanciaciÃ³n Escalonada" 
-                        icon={<Building size={20}/>}
-                        bg="bg-indigo-500/5"
-                        iconColor="text-indigo-500"
-                      >
-                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                            <ZenInput label="LTV (% Financia)" value={inputs.ltv} onChange={(v) => setInputs({...inputs, ltv: v})} step={5} />
-                            <ZenInput label="InterÃ©s (TIN %)" value={inputs.interes} onChange={(v) => setInputs({...inputs, interes: v})} step={0.1} />
-                            <ZenInput label="Plazo (AÃ±os)" value={inputs.plazoAnios} onChange={(v) => setInputs({...inputs, plazoAnios: v})} step={1} />
-                            <ZenInput label="ComisiÃ³n Apertura" value={inputs.comisionApertura} onChange={(v) => setInputs({...inputs, comisionApertura: v})} />
-                         </div>
-                      </InputSection>
+                       <div className="text-sm font-bold text-slate-700 dark:text-slate-300 flex justify-between items-center bg-white/60 dark:bg-slate-950/40 p-4 rounded-xl border border-white/40 dark:border-slate-800/50 backdrop-blur-sm">
+                          <span>Tasación Modelo:</span>
+                          <span className="text-lg font-black">{formatEuro(tenantResults.precioEstimadoMercado)}</span>
+                       </div>
+                    </div>
+                 </div>
 
-                      <InputSection 
-                        title="Fiscalidad (VersiÃ³n 2024)" 
-                        icon={<Scale size={20}/>}
-                        bg="bg-rose-500/5"
-                        iconColor="text-rose-500"
-                      >
-                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                            <ZenInput label="Tu IRPF Marginal (%)" value={inputs.irpfMarginal} onChange={(v) => setInputs({...inputs, irpfMarginal: v})} step={1} />
-                            <div className="space-y-4">
-                               <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">ReducciÃ³n Ley Vivienda</label>
-                               <select 
-                                 value={inputs.tipoReduccion}
-                                 onChange={(e) => setInputs({...inputs, tipoReduccion: parseInt(e.target.value) as any})}
-                                 className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-3xl font-black text-sm outline-none shadow-sm focus:ring-2 focus:ring-rose-500/20"
-                               >
-                                  <option value={50}>50% - General</option>
-                                  <option value={60}>60% - RehabilitaciÃ³n</option>
-                                  <option value={70}>70% - JÃ³venes (18-35)</option>
-                                  <option value={90}>90% - Bajada de Renta -5%</option>
-                               </select>
-                            </div>
-                            <div className="sm:col-span-2 pt-6 border-t border-slate-100 dark:border-slate-800">
-                               <button 
-                                onClick={() => setShowAdvanced(!showAdvanced)}
-                                className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] text-blue-500 hover:text-blue-600 transition-colors"
-                               >
-                                  {showAdvanced ? 'Cerrar Datos Catastrales' : 'Editar Datos Catastrales (CÃ¡lculo AmortizaciÃ³n)'}
-                               </button>
-                               {showAdvanced && (
-                                 <div className="grid grid-cols-2 gap-6 mt-6 animate-fadeIn">
-                                    <ZenInput label="Valor Catastral Total" value={inputs.valorCatastralTotal} onChange={(v) => setInputs({...inputs, valorCatastralTotal: v})} />
-                                    <ZenInput label="Suelo (%)" value={inputs.valorCatastralSueloPct} onChange={(v) => setInputs({...inputs, valorCatastralSueloPct: v})} step={1} />
-                                 </div>
-                               )}
-                            </div>
-                         </div>
-                      </InputSection>
-                   </div>
-                </div>
+                 {/* Ajuste de inputs - Dossier Layout (Apilados verticalmente para lectura cómoda) */}
+                 <div className="flex flex-col gap-8">
+                    <InputSection title="Ficha Financiera y Contrato" icon={<Calculator size={20}/>} defaultOpen={true}>
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          <AuditInput label="Ingreso Neto Mensual" prefix="€" value={tenantInputs.ingresoNetoMensual} onChange={v => setTenantInputs({...tenantInputs, ingresoNetoMensual: v})} tooltip="Suma solo ingresos fijos, recurrentes y comprobables por nómina."/>
+                          <AuditInput label="Renta Solicitada" prefix="€" value={tenantInputs.rentaSolicitada} onChange={v => setTenantInputs({...tenantInputs, rentaSolicitada: v})} tooltip="Canon mensual exigido por el propietario."/>
+                          <AuditInput label="Fianza de Ley (LAU)" suffix="mes/es" step={1} min={1} value={tenantInputs.mesesFianza} onChange={v => setTenantInputs({...tenantInputs, mesesFianza: v})} tooltip="Obligatorio por ley en España: 1 mes para vivienda habitual." />
+                          <AuditInput label="Garantía Adicional" suffix="mes/es" step={1} min={0} value={tenantInputs.mesesGarantiaAdicional} onChange={v => setTenantInputs({...tenantInputs, mesesGarantiaAdicional: v})} tooltip="El arrendador puede exigir hasta un máximo de 2 meses extra de aval o depósito."/>
+                          <div className="md:col-span-2">
+                             <AuditInput label="Presupuesto de Adecuación (Mudanza y Altas)" prefix="€" value={tenantInputs.otrosGastosIniciales} onChange={v => setTenantInputs({...tenantInputs, otrosGastosIniciales: v})} tooltip="Dinero necesario para la mudanza, comprar mobiliario faltante o pagar altas de luz y agua si aplica." />
+                          </div>
+                       </div>
+                    </InputSection>
 
-                <div className="lg:col-span-12 mt-12">
-                   <WhatIfPanel results={results} />
-                </div>
+                    <InputSection title="Perfil Estructural del Inmueble" icon={<Target size={20}/>} defaultOpen={true}>
+                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                          
+                          <div className="flex flex-col gap-2">
+                             <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Micro-Zonificación</label>
+                             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 mb-1 leading-snug font-medium pr-2">La valoración fluctúa según el barrio.</p>
+                             <select className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-xl p-3 font-bold text-slate-800 dark:text-white outline-none cursor-pointer focus:border-emerald-500 transition-colors shadow-sm"
+                               value={tenantInputs.zona} onChange={e => setTenantInputs({...tenantInputs, zona: e.target.value as any})}
+                             >
+                                <option value="premium">Distrito Premium / CBD</option>
+                                <option value="tensionada">Área Tensionada (Poblada)</option>
+                                <option value="media">Residencial Consolidada/Media</option>
+                                <option value="periferia">Periferia Urbana Expansión</option>
+                             </select>
+                          </div>
+
+                          <div className="flex flex-col gap-2">
+                             <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Conservación</label>
+                             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 mb-1 leading-snug font-medium pr-2">Estado actual de habitabilidad del piso.</p>
+                             <select className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-xl p-3 font-bold text-slate-800 dark:text-white outline-none cursor-pointer focus:border-emerald-500 transition-colors shadow-sm"
+                               value={tenantInputs.estado} onChange={e => setTenantInputs({...tenantInputs, estado: e.target.value as any})}
+                             >
+                                <option value="nuevo">Promoción Obra Nueva</option>
+                                <option value="reformado">Reforma Integral Reciente</option>
+                                <option value="bueno">Buen Estado de Conservación</option>
+                                <option value="origen">De Origen / Requiere Mejoras</option>
+                             </select>
+                          </div>
+
+                          <AuditInput label="Área Construida" suffix="m²" value={tenantInputs.metrosCuadrados} onChange={v => setTenantInputs({...tenantInputs, metrosCuadrados: v})} tooltip="Superficie comercial real con áreas comunes." />
+                          <AuditInput label="Nivel / Planta" step={1} min={0} value={tenantInputs.planta || 1} onChange={v => setTenantInputs({...tenantInputs, planta: v})} tooltip="Pisos bajos/sótanos disminuyen el valor de mercado." />
+                          <AuditInput label="Dormitorios" step={1} min={1} value={tenantInputs.habitaciones} onChange={v => setTenantInputs({...tenantInputs, habitaciones: v})} tooltip="Total de habitaciones dedicadas al descanso."/>
+                          <AuditInput label="Cuartos de Baño" step={1} min={1} value={tenantInputs.banos} onChange={v => setTenantInputs({...tenantInputs, banos: v})} tooltip="Incluye aseos de servicio básicos."/>
+                          
+                          <div className="md:col-span-2 lg:col-span-3 grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4 border-t border-slate-100 dark:border-slate-800 pt-6">
+                             <BooleanToggle label="Ascensor" checked={tenantInputs.tieneAscensor} onChange={v => setTenantInputs({...tenantInputs, tieneAscensor: v})} />
+                             <BooleanToggle label="Pza. Parking" checked={tenantInputs.tieneParking} onChange={v => setTenantInputs({...tenantInputs, tieneParking: v})} />
+                             <BooleanToggle label="Terraza/Exterior" checked={tenantInputs.tieneTerraza} onChange={v => setTenantInputs({...tenantInputs, tieneTerraza: v})} />
+                             <BooleanToggle label="Climatización A/C" checked={tenantInputs.tieneAireAcondicionado} onChange={v => setTenantInputs({...tenantInputs, tieneAireAcondicionado: v})} />
+                          </div>
+                          
+                          {!isExporting && (
+                             <div className="md:col-span-2 lg:col-span-3 mt-6 p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-sm">
+                                <div className="text-sm">
+                                   <p className="font-bold text-slate-800 dark:text-white">¿Ayúdanos a calibrar el algoritmo?</p>
+                                   <p className="text-slate-500 font-medium text-xs mt-1">Comparando el piso real con nuestra tasación ({formatEuro(tenantResults.precioEstimadoMercado)}), ¿quién es más acertado?</p>
+                                </div>
+                                <div className="flex gap-2">
+                                   {feedbackGiven ? (
+                                      <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 animate-fadeIn bg-emerald-100 dark:bg-emerald-900/30 px-3 py-1.5 rounded-full"><Check size={14}/> Feedback Guardado</span>
+                                   ) : (
+                                      <>
+                                       <button onClick={() => setFeedbackGiven(true)} className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-emerald-50 hover:border-emerald-300 dark:hover:bg-emerald-900/30 text-slate-500 hover:text-emerald-600 transition-colors shadow-sm" title="Tasación precisa"><ThumbsUp size={18}/></button>
+                                       <button onClick={() => setFeedbackGiven(true)} className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-rose-50 hover:border-rose-300 dark:hover:bg-rose-900/30 text-slate-500 hover:text-rose-600 transition-colors shadow-sm" title="Poco acertada o irreal"><ThumbsDown size={18}/></button>
+                                      </>
+                                   )}
+                                </div>
+                             </div>
+                          )}
+                       </div>
+                    </InputSection>
+                 </div>
               </div>
             ) : (
-              <div className="glass-card p-12 sm:p-20 overflow-hidden relative group animate-fadeIn">
-                <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform duration-1000">
-                  <Calculator size={320} />
-                </div>
-                <div className="relative z-10 max-w-4xl mx-auto">
-                    <div className="flex items-center gap-6 mb-16">
-                      <div className="p-6 bg-emerald-600 rounded-3xl text-white shadow-2xl shadow-emerald-500/40">
-                        <Users size={32} />
-                      </div>
-                      <h3 className="text-4xl sm:text-6xl font-black tracking-tighter dark:text-white uppercase italic">Derechos del <span className="text-emerald-600">Inquilino</span></h3>
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-16">
-                       <div className="space-y-10">
-                          <p className="text-xl text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
-                            Bajo la nueva Ley de Vivienda, los derechos del arrendatario estÃ¡n blindados. Selecciona un escenario para auditar la viabilidad.
-                          </p>
-                          
-                          <div className="flex flex-wrap gap-3">
-                             {tenantScenarios.map(s => (
-                               <button 
-                                 key={s.name}
-                                 onClick={() => setTenantScenario(s)}
-                                 className={cn(
-                                   "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all",
-                                   tenantScenario.name === s.name 
-                                    ? "bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-500/30 -translate-y-1" 
-                                    : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-400 hover:border-emerald-500/50"
-                                 )}
-                               >
-                                 {s.name}
-                               </button>
-                             ))}
-                          </div>
-
-                          <div className="space-y-6 pt-4">
-                             <CheckItem label="Cero Comisiones: La inmobiliaria SIEMPRE la paga el propietario (Art. 20.1 LAU)." />
-                             <CheckItem label="PrÃ³rrogas Extraordinarias: Hasta 3 aÃ±os en zonas tensionadas por vulnerabilidad." />
-                             <CheckItem label="Tope de Subida: Limitado al 3% anual en 2024 y al nuevo Ã­ndice AEAT en 2025." />
-                             <CheckItem label="GarantÃ­as: El propietario no puede pedir mÃ¡s de 2 meses de fianza/garantÃ­a adicional." />
+              <div className="animate-fadeIn max-w-6xl mx-auto">
+                 {/* Landlord Dashboard */}
+                 <div className="grid lg:grid-cols-4 md:grid-cols-2 gap-6 mb-12 items-stretch">
+                    
+                    {/* ROE Card */}
+                    <div className="md:col-span-2 lg:col-span-2 min-h-[260px] p-8 rounded-3xl bg-gradient-to-br from-slate-900 to-black dark:from-[#0a0f1c] dark:to-black border border-slate-800 text-white shadow-[0_10px_40px_rgba(0,0,0,0.5)] flex flex-col justify-between relative overflow-hidden group">
+                       <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-[80px] group-hover:bg-emerald-500/20 transition-all duration-700" />
+                       <div className="relative z-10">
+                          <MetricTitle light title="Retorno S/ Capital Entregado (ROE)" description="El ratio rey de la rentabilidad. Dinero de tu bolsillo rendiendo flujo libre." />
+                          <div className="text-6xl lg:text-7xl font-black tracking-tighter flex items-center gap-2 mt-4">
+                             {landlordResults.roe.toFixed(2)}<span className="text-3xl text-slate-400 font-bold ml-1">%</span>
                           </div>
                        </div>
+                       <div className="relative z-10 mt-auto flex items-center justify-between text-[11px] font-bold py-3 px-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+                          <span className="text-slate-300 uppercase tracking-widest leading-relaxed">Ciclo de Recuperación del Capital Operativo:</span>
+                          <span className="text-emerald-400 text-sm">{landlordResults.paybackYears === Infinity ? 'Infinito' : `${landlordResults.paybackYears.toFixed(1)} Años`}</span>
+                       </div>
+                    </div>
+                    
+                    {/* 10 Year Cash Flow projection */}
+                    <div className="lg:col-span-2 md:col-span-2 min-h-[260px] p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between relative overflow-hidden">
+                       <div className="relative z-10 flex justify-between items-start mb-6">
+                          <div className="max-w-[70%]">
+                             <MetricTitle title="Rendimiento Futuro (10 Y)" description="Proyección económica tras pagar hipoteca y liquidar IRPF anual." />
+                          </div>
+                          <div className="text-right">
+                             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md">Cashflow A1</span>
+                             <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-2">{formatEuro(landlordResults.cashFlowAnual)}</div>
+                          </div>
+                       </div>
+                       
+                       <div className="absolute bottom-0 left-0 right-0 h-36 opacity-90">
+                          <ResponsiveContainer width="100%" height="100%">
+                             <AreaChart data={landlordProjectionData} margin={{ top: 5, right: -5, left: -5, bottom: 0 }}>
+                               <defs>
+                                 <linearGradient id="colorNeto" x1="0" y1="0" x2="0" y2="1">
+                                   <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                                   <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                 </linearGradient>
+                               </defs>
+                               <Tooltip 
+                                  formatter={(value: number) => formatEuro(value)}
+                                  contentStyle={{ backgroundColor: isDark ? '#1e293b' : '#fff', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', fontWeight: 'bold', fontSize: '11px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+                                  cursor={{ stroke: 'rgba(255,255,255,0.2)' }}
+                               />
+                               <Area type="monotone" dataKey="FlujoNeto" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorNeto)" />
+                               <Area type="monotone" dataKey="GastosTotales" stroke="#64748b" strokeWidth={2} fillOpacity={0} strokeDasharray="4 4"/>
+                             </AreaChart>
+                          </ResponsiveContainer>
+                       </div>
+                    </div>
 
-                       <div className="p-12 rounded-[3rem] bg-slate-950 text-white space-y-8 shadow-2xl relative overflow-hidden group/card shadow-emerald-900/40 border border-emerald-500/20 flex flex-col justify-center">
-                          <div className="absolute -top-10 -right-10 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl group-hover/card:scale-150 transition-transform duration-1000" />
-                          <div>
-                            <p className="text-xs font-black text-emerald-400 uppercase tracking-[0.4em] mb-2">Ratio de Esfuerzo: {tenantScenario.name}</p>
-                            <div className="text-9xl font-black tracking-tighter text-white flex items-baseline gap-2 leading-none">
-                               {((inputs.rentaMensual / tenantScenario.income) * 100).toFixed(0)}<span className="text-4xl font-light text-emerald-400 italic">%</span>
+                    {/* NOI + Cap Rate Bruto */}
+                    <div className="md:col-span-1 lg:col-span-2 min-h-[220px] p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+                       <MetricTitle title="Net Operating Income (NOI)" description="El corazón operativo del activo. Ingresos menos operativos, descarta tu deuda (hipoteca) para evidenciar su competitividad tasable." />
+                       <div className="text-4xl font-black text-slate-900 dark:text-white mt-auto mb-6">
+                          {formatEuro(landlordResults.noi)}
+                       </div>
+                       
+                       {/* Badge Cap Rate */}
+                       <div className="flex justify-between items-center bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-900/50">
+                           <span className="text-[11px] font-bold text-blue-800 dark:text-blue-300 uppercase tracking-widest pl-1">Cap Rate (Bruto)</span>
+                           <div className="px-4 py-1.5 rounded-full bg-blue-600 shadow-sm shadow-blue-500/30 text-white font-black text-base flex justify-center min-w-[70px]">
+                               {resultsToCapRate(landlordResults.noi, inputs.precioCompra)}%
+                           </div>
+                       </div>
+                    </div>
+
+                    {/* Opex Pie Chart */}
+                    <div className="md:col-span-1 lg:col-span-2 min-h-[220px] p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+                       <MetricTitle title="Distribución Opex" description="Estructura y peso de gastos obligatorios fijos (Hipoteca, Recibos de Estado, Seguros)." />
+                       <div className="flex-1 flex items-center justify-between mt-2">
+                           <div className="h-28 w-28 relative flex-shrink-0">
+                             <ResponsiveContainer width="100%" height="100%">
+                               <PieChart>
+                                 <Pie data={landlordExpensesData} innerRadius={35} outerRadius={54} paddingAngle={3} dataKey="value" stroke="none" cornerRadius={4}>
+                                   {landlordExpensesData.map((e,i) => <Cell key={i} fill={e.color}/>)}
+                                 </Pie>
+                                 <Tooltip formatter={(v: number) => formatEuro(v)} contentStyle={{ fontSize: '11px', borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}/>
+                               </PieChart>
+                             </ResponsiveContainer>
+                           </div>
+                           <div className="flex-1 pl-6 flex flex-col justify-center gap-2.5 overflow-hidden">
+                              {landlordExpensesData.slice(0, 3).map(e => (
+                                 <div key={e.name} className="flex justify-between items-center text-[11px] font-bold">
+                                     <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 max-w-[70%]">
+                                         <div className="w-2.5 h-2.5 rounded shadow-sm flex-shrink-0" style={{backgroundColor: e.color}}/>
+                                         <span className="truncate">{e.name}</span>
+                                     </div>
+                                     <span className="text-slate-900 dark:text-white ml-2">{formatEuro(e.value)}</span>
+                                 </div>
+                              ))}
+                           </div>
+                       </div>
+                    </div>
+                 </div>
+
+                 {/* Inputs Configuración - Estilo Dossier Stacked */}
+                 <div className="flex flex-col gap-8">
+                    <InputSection title="I. Capital Expenditure (CAPEX)" icon={<TrendingUp size={20}/>} defaultOpen={true}>
+                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                          <AuditInput label="Valor Base Compra" prefix="€" value={inputs.precioCompra} onChange={v => setInputs({...inputs, precioCompra: v})} tooltip="El valor crudo registrado en escrituras. Base del ITP."/>
+                          <AuditInput label="Trasmisiones/IVA" suffix="%" value={inputs.itpIva} onChange={v => setInputs({...inputs, itpIva: v})} step={0.5} tooltip="El porcentaje del ITP local (o 10% IVA para Nueva Construcción)."/>
+                          <AuditInput label="Inversión Reforma" prefix="€" value={inputs.reformaCoste + inputs.mobiliario} onChange={v => setInputs({...inputs, reformaCoste: v})} tooltip="Suma del dinero en equipamiento, lavado de cara o amoblado integral."/>
+                          <AuditInput label="Notaría y Extras" prefix="€" value={inputs.gastosEscritura} onChange={v => setInputs({...inputs, gastosEscritura: v})} tooltip="Notario, Registro Público y posible tasadora asociada al proceso."/>
+                       </div>
+                    </InputSection>
+                    
+                    <InputSection title="II. Operativa Anual Bruta" icon={<Euro size={20} />} defaultOpen={true}>
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          <AuditInput label="Aforo Renta Mensual" prefix="€" value={inputs.rentaMensual} onChange={v => setInputs({...inputs, rentaMensual: v})} tooltip="Monto a solicitar en mercado." />
+                          <AuditInput label="Holgura / Vacancia" suffix="%" value={inputs.tasaVacancia} onChange={v => setInputs({...inputs, tasaVacancia: v})} step={1} tooltip="Descuenta un margen anual de ingresos para prepararse contra meses nulos predecibles y cambio del inquilino." />
+                          
+                          <div className="md:col-span-2 border-t border-slate-100 dark:border-slate-800 pt-6">
+                             <BooleanToggle label="Activo Declarado en Zona Tensionada Estatal" checked={inputs.zonaTensionada} onChange={v => setInputs({...inputs, zonaTensionada: v})} />
+                          </div>
+                          {inputs.zonaTensionada && (
+                            <div className="md:col-span-2 -mx-2 p-5 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-200 dark:border-slate-800 transition-all">
+                               <AuditInput label="Renta del Contrato Antiguo" prefix="€" value={inputs.rentaAnterior || 0} onChange={v => setInputs({...inputs, rentaAnterior: v})} tooltip="Clave legal (Ley 12/2023): Limita las pretensiones y bloquea al propietario de exigir más dinero percutiendo tu capacidad de Cap Rate, con excepciones tasadas por reforma."/>
                             </div>
-                          </div>
+                          )}
+                       </div>
+                    </InputSection>
+
+                    <InputSection title="III. Modelo de Apalancamiento D/E" icon={<Building size={20}/>}>
+                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                          <AuditInput label="Ratio Financiado (LTV)" suffix="%" value={inputs.ltv} onChange={v => setInputs({...inputs, ltv: v})} step={5} tooltip="Porcentaje bancario inyectado por el prestamista (Ej: 80% lo fondea el banco, 20% es tu Equity inicial)." />
+                          <AuditInput label="TIN Ponderado" suffix="%" value={inputs.interes} onChange={v => setInputs({...inputs, interes: v})} step={0.1} tooltip="Interés puro (TIN) del apalancamiento."/>
+                          <AuditInput label="Ciclo Amortiza." suffix="Años" value={inputs.plazoAnios} onChange={v => setInputs({...inputs, plazoAnios: v})} step={1} tooltip="Horizonte temporal del préstamo concedido." />
+                          <AuditInput label="Costes Operación" prefix="€" value={inputs.comisionApertura} onChange={v => setInputs({...inputs, comisionApertura: v})} tooltip="Costes explícitos por abrir dicho volumen de deuda." />
+                       </div>
+                    </InputSection>
+
+                    <InputSection title="IV. Estructura Fija OPEX y FISCALIDAD" icon={<ShieldCheck size={20}/>}>
+                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                          <AuditInput label="Comunidad/Seguridad" prefix="€" value={inputs.comunidad / 12} onChange={v => setInputs({...inputs, comunidad: v * 12})} tooltip="Costo fijo comunal del inmueble anualizado para modelo." />
+                          <AuditInput label="Tributos Recurrentes" prefix="€" value={inputs.ibi} onChange={v => setInputs({...inputs, ibi: v})} tooltip="Anualidad agregada de las obligaciones municipales y catastrales (IBI y Basuras locales)."/>
+                          <AuditInput label="Pólizas y Coberturas" prefix="€" value={inputs.seguroHogar + inputs.seguroImpago} onChange={v => setInputs({...inputs, seguroHogar: v})} tooltip="Riesgos externalizados (AR / Seguro de alquiler, Responsabilidad Civil)." />
+                          <AuditInput label="Derramas Reservadas" prefix="€" value={inputs.mantenimientoEstimado} onChange={v => setInputs({...inputs, mantenimientoEstimado: v})} tooltip="Presupuesto bloqueado anual para contingencias."/>
+                          <AuditInput label="Presión IRPF Tranch" suffix="%" value={inputs.irpfMarginal} onChange={v => setInputs({...inputs, irpfMarginal: v})} step={1} tooltip="Escalón de tu declaración sobre rendimientos devengado para restar del cash free."/>
                           
-                          <div className="space-y-4 pt-8">
-                             <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
-                                <span>Ingreso Neto</span>
-                                <span>{formatEuro(tenantScenario.income)}</span>
-                             </div>
-                             <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
-                                <div 
-                                  className={cn("h-full transition-all duration-1000", inputs.rentaMensual/tenantScenario.income > 0.3 ? "bg-rose-500" : "bg-emerald-500")}
-                                  style={{ width: `${Math.min(100, (inputs.rentaMensual/tenantScenario.income)*100)}%` }}
-                                />
-                             </div>
-                             <p className="text-sm text-slate-400 font-medium leading-relaxed">
-                                <span className={cn(
-                                  "inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest",
-                                  inputs.rentaMensual/tenantScenario.income > 0.3 ? "bg-rose-500/20 text-rose-500" : "bg-emerald-500/20 text-emerald-500"
-                                )}>
-                                  {inputs.rentaMensual/tenantScenario.income > 0.3 ? "⚠️ Exceso de Carga (>30%)" : "✅ Alquiler Saludable"}
-                                </span>
-                             </p>
+                          <div className="flex flex-col gap-2 pt-1 border-t border-slate-100 dark:border-slate-800/50 mt-1 md:col-span-2 lg:col-span-3">
+                             <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Margen Escudo Fiscal Aplicable</label>
+                             <p className="text-[11px] text-slate-500 font-medium mb-1">Manejar este porcentaje es crítico bajo el marco estatal actual para no estrangular el margen libre de impuestos sobre rendimientos del capital inmobiliario a descontar.</p>
+                             <select 
+                               className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-xl p-3 font-bold text-slate-800 dark:text-white outline-none cursor-pointer focus:border-emerald-500 transition-colors shadow-sm"
+                               value={inputs.tipoReduccion}
+                               onChange={(e) => setInputs({...inputs, tipoReduccion: parseInt(e.target.value) as any})}
+                             >
+                                <option value={50}>Deducción Base Ordinaria P. Física (50%)</option>
+                                <option value={60}>Obras Certificadas Mejora Eficiencia Energética (60%)</option>
+                                <option value={70}>Nuevo Régimen a Jóvenes (Primer contrato ≤35a) (70%)</option>
+                                <option value={90}>Zona T. (Acogido a Reducción Pactada -5%) (90%)</option>
+                             </select>
                           </div>
                        </div>
-                    </div>
-                </div>
+                    </InputSection>
+                 </div>
               </div>
             )}
           </main>
           
-          <footer className="mt-24 py-16 text-center border-t border-slate-100 dark:border-slate-900">
-             {isExporting && (
-               <div className="mb-12">
-                 <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.4em] mb-4">AnÃ¡lisis Generado el {new Date().toLocaleDateString('es-ES')}</p>
-                 <a 
-                   href="https://borjafelixrojas.odoo.com/" 
-                   target="_blank" 
-                   rel="noopener noreferrer"
-                   className="px-8 py-3 rounded-full border border-emerald-600/20 inline-block text-emerald-600 font-black text-sm tracking-tighter hover:bg-emerald-600/5 transition-colors"
-                 >
-                   BORJAFELIXROJAS.ODOO.COM
-                 </a>
-               </div>
-             )}
-             <p className="text-slate-300 dark:text-slate-700 text-[10px] tracking-[0.8em] font-black uppercase">
-               ESTRATEGIA Â· TECNOLOGÃ­ÂA Â· DATOS Â· 2026
+          <footer className="mt-20 pt-10 border-t border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
+             <div className="flex items-center gap-3 opacity-60">
+                 <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-white">
+                    <LineChart size={14} />
+                 </div>
+                 <div className="text-xs font-bold tracking-widest uppercase text-slate-500 dark:text-slate-400">
+                    BFR Analytics &copy; 2026
+                 </div>
+             </div>
+             <p className="text-[10px] text-slate-500 dark:text-slate-400 max-w-sm text-center md:text-right font-medium">
+                Dossier heurístico confidencial operado por BFR Properties. Evita riesgos de mercado asegurando la operación con los debidos asesores colegiados inmobiliarios.
              </p>
           </footer>
         </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 mb-20">
-         <div className="glass-card p-12 border-slate-200 dark:border-slate-800 bg-white/30 dark:bg-slate-900/30 backdrop-blur-xl">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
-               <div className="space-y-4">
-                  <h3 className="text-2xl font-black uppercase tracking-tighter dark:text-white">Arquitectura del Proyecto <span className="text-emerald-500 font-light italic">Showcase</span></h3>
-                  <div className="flex flex-wrap gap-3">
-                     {['React 19', 'Vite', 'Tailwind v4', 'Lucide', 'html2canvas', 'Vibe Coding'].map(tech => (
-                        <span key={ tech } className="px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[9px] font-black text-slate-500 uppercase tracking-widest border border-slate-200 dark:border-slate-700">{tech}</span>
-                     ))}
-                  </div>
-               </div>
-               <div className="max-w-md text-slate-500 dark:text-slate-400 text-xs font-medium leading-relaxed italic">
-                  Este simulador ha sido concebido bajo la metodologÃ­a de "IngenierÃ­a de lo Cotidiano", priorizando la densidad de informaciÃ³n y la agilidad de cÃ¡lculo sobre la complejidad administrativa. Un motor Antigravity al servicio de la rentabilidad inmobiliaria.
-               </div>
-            </div>
-         </div>
-      </div>
-
-      <div className="py-12 flex justify-center gap-6 animate-fadeIn">
-          <a href="https://borjafelixrojas.odoo.com/" title="Compartir SimulaciÃ³n" className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:text-emerald-500 hover:scale-110 transition-all shadow-xl shadow-slate-200 dark:shadow-none">
-            <Share2 size={24} />
-          </a>
+        )}
       </div>
     </div>
   );
 }
 
-function TabButton({ active, onClick, icon, label }: any) {
+// UI Helpers
+
+function resultsToCapRate(noi: number, precioCompra: number) {
+   if (precioCompra === 0) return 0;
+   return ((noi / precioCompra) * 100).toFixed(1);
+}
+
+function MetricTitle({ title, description, light = false }: { title: string, description: string, light?: boolean }) {
+  return (
+    <div className="mb-2">
+      <h4 className={cn("text-[11px] font-bold uppercase tracking-widest", light ? "text-slate-300" : "text-slate-600 dark:text-slate-400")}>
+         {title}
+      </h4>
+      <p className={cn("text-[10px] mt-1.5 leading-relaxed font-medium", light ? "text-slate-400" : "text-slate-500")}>
+         {description}
+      </p>
+    </div>
+  );
+}
+
+function ServiceCard({ icon, title, description, buttonLabel, onClick, color }: any) {
+   const colorClasses = color === 'emerald' 
+     ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 hover:border-emerald-500" 
+     : "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 hover:border-blue-500";
+   
+   return (
+      <button 
+         onClick={onClick}
+         className="group relative p-8 rounded-[2rem] bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur-xl border border-white/20 dark:border-white/5 hover:-translate-y-1 transition-all text-left shadow-xl shadow-slate-200/50 dark:shadow-[0_0_40px_rgba(0,0,0,0.3)] cursor-pointer flex flex-col h-full"
+      >
+         <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform shadow-inner", colorClasses)}>
+            {icon}
+         </div>
+         <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-4 tracking-tight">{title}</h3>
+         <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-8 flex-grow font-medium">
+            {description}
+         </p>
+         <span className={cn("inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest transition-transform mt-auto", color === 'emerald' ? "text-emerald-600 dark:text-emerald-400" : "text-blue-600 dark:text-blue-400")}>
+            {buttonLabel} <ArrowRight size={14} className="group-hover:translate-x-2 transition-transform" />
+         </span>
+      </button>
+   )
+}
+
+function TabButton({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string }) {
   return (
     <button 
       onClick={onClick}
       className={cn(
-        "flex items-center gap-3 px-8 py-3.5 rounded-full text-xs font-black uppercase tracking-widest transition-all focus:outline-none",
+        "flex items-center gap-2.5 px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all focus:outline-none flex-shrink-0 cursor-pointer shadow-sm",
         active 
-          ? "bg-white dark:bg-emerald-600 text-slate-900 dark:text-white shadow-2xl scale-105" 
-          : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+          ? "bg-white dark:bg-slate-800/80 text-slate-900 dark:text-white border border-slate-200 dark:border-white/10" 
+          : "text-slate-500 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 hover:text-slate-800 dark:hover:text-slate-300 border border-transparent"
       )}
     >
       {icon}
@@ -554,99 +670,52 @@ function TabButton({ active, onClick, icon, label }: any) {
   );
 }
 
-function InputSection({ title, children, icon, bg, iconColor, defaultOpen = false }: any) {
+function InputSection({ title, children, icon, defaultOpen = false }: any) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className={cn("rounded-[3rem] border border-slate-200 dark:border-slate-800 overflow-hidden transition-all shadow-xl shadow-slate-200/30 dark:shadow-none bg-white/50 dark:bg-slate-900/50", bg)}>
+    <div className="rounded-[2rem] border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-[#0a0f1c]/50 overflow-hidden shadow-sm backdrop-blur-sm">
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full p-8 flex items-center justify-between group hover:bg-white dark:hover:bg-slate-900 transition-all focus:outline-none"
+        className="w-full px-8 py-6 flex items-center justify-between hover:bg-white dark:hover:bg-slate-800/80 transition-colors focus:outline-none cursor-pointer"
       >
-        <div className="flex items-center gap-5">
-          <div className={cn("p-5 rounded-3xl shadow-2xl transition-all group-hover:scale-110 group-hover:-rotate-6 bg-white dark:bg-slate-900", iconColor)}>
-            {icon}
-          </div>
-          <h3 className="font-black text-sm uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-white transition-colors">
+        <div className="flex items-center gap-4">
+          <div className="text-slate-500 dark:text-slate-400 p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl shadow-inner">{icon}</div>
+          <h3 className="font-bold text-sm tracking-widest text-slate-800 dark:text-white uppercase mt-0.5">
             {title}
           </h3>
         </div>
-        <ChevronDown className={cn("text-slate-300 transition-transform duration-700", isOpen && "rotate-180")} size={22} />
+        <ChevronDown className={cn("text-slate-400 transition-transform duration-300", isOpen && "rotate-180")} size={20} />
       </button>
       
       <div className={cn(
-        "transition-all duration-700 ease-in-out px-10 pb-10",
-        isOpen ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0 pointer-events-none overflow-hidden"
+        "transition-all duration-500 ease-in-out px-8 overflow-hidden bg-white dark:bg-transparent",
+        isOpen ? "max-h-[2000px] opacity-100 pb-8 opacity-100" : "max-h-0 opacity-0 pb-0"
       )}>
-        {children}
+        <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
+           {children}
+        </div>
       </div>
     </div>
   );
 }
 
-function CheckItem({ label }: { label: string }) {
+function BooleanToggle({ label, checked, onChange }: { label: string, checked: boolean, onChange: (v: boolean) => void }) {
   return (
-    <div className="flex items-start gap-4 p-4 rounded-2xl bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/50 shadow-sm group hover:border-emerald-500/30 transition-colors">
-      <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500 group-hover:scale-110 transition-transform">
-        <CheckCircle2 size={18} />
+    <button
+      onClick={() => onChange(!checked)}
+      className={cn(
+        "w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all text-left focus:outline-none cursor-pointer group",
+        checked ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/10" : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700 shadow-sm"
+      )}
+    >
+      <span className={cn("text-xs font-bold uppercase tracking-wider min-w-0 pr-2 transition-colors", checked ? "text-emerald-700 dark:text-emerald-400" : "text-slate-600 dark:text-slate-400")}>{label}</span>
+      <div className={cn(
+        "w-10 h-6 rounded-full flex items-center p-1 transition-colors flex-shrink-0 relative shadow-inner",
+        checked ? "bg-emerald-500" : "bg-slate-200 dark:bg-slate-800"
+      )}>
+        <div className={cn("w-4 h-4 bg-white rounded-full transition-transform absolute shadow-sm", checked ? "right-1" : "left-1")} />
       </div>
-      <p className="text-sm font-bold text-slate-600 dark:text-slate-300 leading-tight">{label}</p>
-    </div>
-  );
-}
-
-function WhatIfPanel({ results }: { results: any }) {
-  return (
-    <div className="glass-card overflow-hidden bg-slate-900 text-white relative">
-       <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
-          <History size={240} />
-       </div>
-       <div className="p-10 sm:p-14 relative z-10">
-          <div className="flex items-center gap-6 mb-12">
-             <div className="p-4 bg-emerald-600 rounded-2xl shadow-xl shadow-emerald-500/20">
-                <Lightbulb size={24} />
-             </div>
-             <div>
-                <h3 className="text-3xl font-black tracking-tighter uppercase italic">Estrategias <span className="text-emerald-500">OptimizaciÃ³n</span></h3>
-                <p className="text-slate-400 font-medium text-sm mt-1 uppercase tracking-widest">Maximiza tu rentabilidad fiscal y operativa</p>
-             </div>
-          </div>
-          
-          <div className="grid md:grid-cols-2 gap-10 lg:gap-16 items-start">
-             <ScenarioCard 
-               title="Bajada de Renta -5%"
-               impact="+22% Cash Flow"
-               desc="Al bajar un 5% la renta en zona tensionada, activas la reducciÃ³n del 90% en el IRPF (Ley 2024). El ahorro fiscal supera con creces la pÃ©rdida de ingreso bruto."
-               result={formatEuro(results.cashFlowAnual * 1.22)}
-             />
-             <ScenarioCard 
-               title="Inquilino Joven (18-35)"
-               impact="+9% Neto"
-               desc="Al alquilar a jÃ³venes en zonas tensionadas, la reducciÃ³n fiscal sube al 70%. Ideal para maximizar el retorno neto sin bajar el precio de mercado."
-               result={formatEuro(results.cashFlowAnual * 1.09)}
-               variant="blue"
-             />
-          </div>
-       </div>
-    </div>
-  );
-}
-
-function ScenarioCard({ title, impact, desc, result, variant = 'emerald' }: any) {
-  return (
-    <div className="space-y-6 group/scen">
-       <div className="flex justify-between items-center">
-          <h4 className="text-xl font-black uppercase tracking-tight">{title}</h4>
-          <span className={cn(
-            "px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
-            variant === 'emerald' ? "bg-emerald-500/20 text-emerald-400" : "bg-blue-500/20 text-blue-400"
-          )}>{impact}</span>
-       </div>
-       <p className="text-slate-400 text-xs leading-relaxed font-medium">{desc}</p>
-       <div className="pt-6 border-t border-white/10">
-          <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Nuevo Flujo Neto Estimado</p>
-          <div className="text-4xl font-black text-white group-hover/scen:translate-x-2 transition-transform">{result}</div>
-       </div>
-    </div>
+    </button>
   );
 }
