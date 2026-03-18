@@ -7,18 +7,16 @@ export const exportToPDF = async (elementId: string, filename: string) => {
 
   try {
     const canvas = await (html2canvas as any)(element, {
-      scale: 1.5,
+      scale: 2, // Higher quality
       useCORS: true,
       backgroundColor: document.documentElement.classList.contains('dark') ? '#020617' : '#f8fafc',
     });
 
     const imgData = canvas.toDataURL('image/png', 0.8);
-    const pdf = new jsPDF('p', 'mm', 'a4');
+    // Create PDF with exactly the canvas dimensions in pixels
+    const pdf = new jsPDF('p', 'px', [canvas.width, canvas.height]);
     
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-    
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+    pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height, undefined, 'FAST');
     pdf.save(`${filename}.pdf`);
   } catch (error) {
     console.error('Error generating PDF:', error);

@@ -31,7 +31,8 @@ export interface RentalInputs {
   // --- FISCALIDAD (IRPF ESPAÑA) ---
   valorCatastralTotal: number;
   valorCatastralSueloPct: number; // Normalmente ~20-30%
-  irpfMarginal: number; // Tramo marginal del propietario
+  salarioBase: number; // Salario bruto del propietario para calcular tramo marginal
+  autonomousRegion: 'madrid' | 'cataluna' | 'valencia' | 'andalucia' | 'otras';
   tipoReduccion: 50 | 60 | 70 | 90; // Ley Vivienda 2024
 }
 
@@ -49,6 +50,7 @@ export interface RentalResults {
   interesesDeduciblesAnuales: number;
   rendimientoNetoFiscal: number;
   cuotaIrpfAnual: number;
+  tipoIrpfEfectivo: number; // Tramo efectivo real calculado
   
   cashFlowAnual: number;
   rentabilidadBruta: number;
@@ -57,6 +59,101 @@ export interface RentalResults {
   noi: number;
   paybackYears: number;
 }
+
+export interface MortgageSchedule {
+  year: number;
+  startingBalance: number;
+  principalPaid: number;
+  interestPaid: number;
+  annualPayment: number;
+  endingBalance: number;
+  remainingYears: number;
+}
+
+export function generateMortgageSchedule(principal: number, annualRate: number, years: number): MortgageSchedule[] {
+  if (principal <= 0 || years <= 0) return [];
+  const r = (annualRate / 100) / 12;
+  const n = years * 12;
+  const monthlyPayment = r > 0 ? (principal * r) / (1 - Math.pow(1 + r, -n)) : principal / n;
+  
+  const schedule: MortgageSchedule[] = [];
+  let balance = principal;
+  
+  for (let y = 1; y <= years; y++) {
+    let yearInterest = 0;
+    let yearPrincipal = 0;
+    const startBal = balance;
+    
+    for (let m = 1; m <= 12; m++) {
+      const interestPayment = r > 0 ? balance * r : 0;
+      const principalPayment = monthlyPayment - interestPayment;
+      balance -= principalPayment;
+      yearInterest += interestPayment;
+      yearPrincipal += principalPayment;
+    }
+    
+    schedule.push({
+      year: y,
+      startingBalance: startBal,
+      principalPaid: yearPrincipal,
+      interestPaid: yearInterest,
+      annualPayment: yearInterest + yearPrincipal,
+      endingBalance: Math.max(0, balance),
+      remainingYears: years - y
+    });
+  }
+  return schedule;
+}
+
+export interface YearProjection {
+  year: number;
+  cashFlowAnual: number;
+  cashFlowAcumulado: number;
+  equityConstruido: number;
+  riquezaNetaGenerada: number;
+  paybackAchieved: boolean;
+}
+
+export function calculateProjections(inputs: RentalInputs, results: RentalResults, yearsLimit: number = 30): YearProjection[] {
+  const schedule = generateMortgageSchedule(results.financiacionTotal, inputs.interes, inputs.plazoAnios);
+  
+  const projections: YearProjection[] = [];
+  let cumulativeCash = 0;
+  const initialEquity = results.capitalPropio;
+
+  for (let year = 1; year <= yearsLimit; year++) {
+    const mortgageData = schedule.find(s => s.year === year) || { principalPaid: 0, interestPaid: 0, annualPayment: 0 };
+    
+    const inflationMultiplier = Math.pow(1.02, year - 1);
+    const currentRenta = inputs.rentaMensual * 12 * (1 - inputs.tasaVacancia / 100) * inflationMultiplier;
+    const currentOpex = results.gastosOperativosAnuales * inflationMultiplier;
+    
+    const ebitda = currentRenta - currentOpex;
+    const baseAmortizada = results.amortizacionInmueble;
+    const rendimientoFiscalAnual = currentRenta - currentOpex - mortgageData.interestPaid - baseAmortizada;
+    const rendimientoReducido = Math.max(0, rendimientoFiscalAnual * (1 - inputs.tipoReduccion / 100));
+    
+    const irpfResult = calculateProgressiveIRPF(rendimientoReducido, inputs.autonomousRegion, inputs.salarioBase);
+    
+    const anioCashFlow = ebitda - mortgageData.annualPayment - irpfResult.totalTax;
+    cumulativeCash += anioCashFlow;
+    
+    const totalPrincipalPaid = schedule.filter(s => s.year <= year).reduce((acc, curr) => acc + curr.principalPaid, 0);
+    
+    projections.push({
+      year,
+      cashFlowAnual: anioCashFlow,
+      cashFlowAcumulado: cumulativeCash,
+      equityConstruido: totalPrincipalPaid,
+      riquezaNetaGenerada: cumulativeCash + totalPrincipalPaid,
+      paybackAchieved: cumulativeCash >= initialEquity
+    });
+  }
+  
+  return projections;
+}
+
+import { calculateProgressiveIRPF } from './tax-tramos';
 
 export function calculateRentalYield(inputs: RentalInputs): RentalResults {
   // 1. Inversión Inicial
@@ -108,7 +205,11 @@ export function calculateRentalYield(inputs: RentalInputs): RentalResults {
   
   // Aplicar reducción Ley Vivienda (ej. 50% residencial habitual)
   const rendimientoReducido = Math.max(0, rendimientoNetoFiscal * (1 - inputs.tipoReduccion / 100));
-  const cuotaIrpfAnual = rendimientoReducido * (inputs.irpfMarginal / 100);
+  
+  // Cálculo de IRPF con tramos reales
+  const irpfResult = calculateProgressiveIRPF(rendimientoReducido, inputs.autonomousRegion, inputs.salarioBase);
+  const cuotaIrpfAnual = irpfResult.totalTax;
+  const tipoIrpfEfectivo = irpfResult.effectiveRate * 100;
 
   // 5. Cash Flow Final
   const cashFlowAnual = ebitda - (cuotaHipotecariaMensual * 12) - cuotaIrpfAnual;
@@ -130,6 +231,7 @@ export function calculateRentalYield(inputs: RentalInputs): RentalResults {
     interesesDeduciblesAnuales: interesesDeducibles,
     rendimientoNetoFiscal,
     cuotaIrpfAnual,
+    tipoIrpfEfectivo,
     cashFlowAnual,
     rentabilidadBruta,
     rentabilidadNeta,
