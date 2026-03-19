@@ -147,9 +147,13 @@ export function TenantDashboard() {
               </div>
             </div>
 
-            <div className="text-sm font-bold text-slate-700 dark:text-slate-300 flex justify-between items-center bg-white/60 dark:bg-slate-950/40 p-4 rounded-xl border border-white/40 dark:border-slate-800/50 backdrop-blur-sm">
-              <span>Tasación Modelo:</span>
+            <div className="text-sm font-bold text-slate-700 dark:text-slate-300 flex justify-between items-center bg-white/60 dark:bg-slate-950/40 p-4 rounded-xl border border-white/40 dark:border-slate-800/50 backdrop-blur-sm mb-3">
+              <span>Tasación Modelo BFR:</span>
               <span className="text-lg font-black">{formatEuro(tenantResults.precioEstimadoMercado)}</span>
+            </div>
+
+            <div className="text-xs text-slate-500 dark:text-slate-400 px-1">
+              <span className="font-medium">Basado en dataset Idealista 2018 ajustado a 2025</span>
             </div>
         </div>
       </div>
@@ -171,8 +175,21 @@ export function TenantDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               
               <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Municipio</label>
+                  <input type="text" className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-xl p-3 font-bold text-slate-800 dark:text-white outline-none focus:border-emerald-500 transition-colors shadow-sm"
+                    value={inputs.municipio} onChange={e => updateInput('municipio', e.target.value)} placeholder="Ej: Madrid, Barcelona..."
+                  />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Barrio</label>
+                  <input type="text" className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-xl p-3 font-bold text-slate-800 dark:text-white outline-none focus:border-emerald-500 transition-colors shadow-sm"
+                    value={inputs.barrio || ''} onChange={e => updateInput('barrio', e.target.value)} placeholder="Ej: Eixample, Salamanca..."
+                  />
+              </div>
+
+              <div className="flex flex-col gap-2">
                   <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Micro-Zonificación</label>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 mb-1 leading-snug font-medium pr-2">La valoración fluctúa según el barrio.</p>
                   <select className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-xl p-3 font-bold text-slate-800 dark:text-white outline-none cursor-pointer focus:border-emerald-500 transition-colors shadow-sm"
                     value={inputs.zona} onChange={e => updateInput('zona', e.target.value as any)}
                   >
