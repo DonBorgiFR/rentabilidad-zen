@@ -1,59 +1,99 @@
-# 📈 RentabilidadReal: Simulador Inmobiliario Avanzado
+# 🏡 Rentabilidad Zen — Dossier Inmobiliario BFR
 
-Una herramienta de cálculo de rentabilidad inmobiliaria **Premium**, diseñada específicamente para el mercado de Barcelona y zonas tensionadas, integrando el motor fiscal de la Ley de Vivienda 2024.
+Simulador de decisión inmobiliaria con dos dossiers independientes: uno para **inversores/propietarios** y otro para **inquilinos**. Diseñado para el mercado español con motor fiscal Ley de Vivienda 2024 y tasador heurístico calibrado con dataset Idealista 2018.
 
-![Modern UI Preview](https://img.shields.io/badge/UX-Premium-emerald) ![React](https://img.shields.io/badge/React-18-blue) ![Tailwind](https://img.shields.io/badge/Tailwind-CSS-indigo) ![Vite](https://img.shields.io/badge/Vite-5-purple)
+![React](https://img.shields.io/badge/React-18-blue) ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue) ![Tailwind](https://img.shields.io/badge/Tailwind-CSS-indigo) ![Vite](https://img.shields.io/badge/Vite-6-purple) ![Zustand](https://img.shields.io/badge/Zustand-5-orange)
 
-## 🚀 Características Principales
+## 🎯 Dossiers Disponibles
 
-- **Cálculo Reactivo**: Olvida los botones de "calcular". Los resultados (ROE, ROA, Cash Flow) se actualizan al instante.
-- **Motor Fiscal Ley Vivienda 2024**: Implementa las nuevas reducciones de IRPF (90%, 70%, 60%, 50%) de forma automática.
-- **Dashboard de KPIs**: Visualiza Rentabilidad Bruta, Neta y Real con micro-animaciones profesionales.
-- **Comparador "What-If"**: Analiza si te conviene bajar la renta para ahorrar impuestos o cambiar de modelo de alquiler.
-- **Diseño Glassmorphism**: Una interfaz moderna y limpia con soporte nativo para **Modo Oscuro**.
+### 📊 Dossier de Inversión (Propietario)
+Auditoría de rentabilidad operativa para propietarios e inversores:
+- **KPIs en tiempo real**: Rentabilidad Bruta, Neta y Real (ROE/ROA)
+- **Motor fiscal Ley de Vivienda 2024**: Reducciones IRPF (90%, 70%, 60%, 50%) automáticas
+- **Análisis What-If**: Compara estrategias de renta vs. bonificación fiscal
+- **Cash Flow detallado**: Desglose de ingresos, gastos operativos y fiscalidad
+- **Simulador de financiación**: Hipoteca con LTV, interés y amortización
+
+### 🏠 Dossier de Inquilino
+Análisis de viabilidad financiera y tasación de mercado:
+- **Ratio de Esfuerzo**: Gauge visual del impacto del alquiler sobre ingresos netos (umbral 33%)
+- **Tasador Heurístico BFR**: Estimación de renta justa basada en dataset Idealista 2018 ajustado a 2025 (Euribor)
+- **Veredicto Estructural**: Oportunidad / Precio Justo / Sobreprecio Leve / Sobreprecio Severo
+- **Desembolso Inicial**: Cálculo del efectivo total necesario para la firma (fianza, garantías, mudanza)
+- **60+ municipios** con factores de ajuste calibrados
 
 ## 🛠️ Stack Tecnológico
 
-- **Core**: [React](https://reactjs.org/) + [TypeScript](https://www.typescriptlang.org/)
-- **Build Tool**: [Vite](https://vitejs.dev/)
-- **Estilos**: [Tailwind CSS](https://tailwindcss.com/)
-- **Animaciones**: [Framer Motion](https://www.framer.com/motion/)
-- **Iconos**: [Lucide React](https://lucide.dev/)
+| Capa | Tecnología |
+|------|-----------|
+| Framework | React 18 + TypeScript |
+| Build | Vite 6 |
+| Estado | Zustand 5 |
+| Estilos | Tailwind CSS 3 |
+| Gráficos | Recharts 2 |
+| Iconos | Lucide React |
+| PDF Export | jsPDF + html2canvas |
+| Analytics (opt.) | Supabase (feedback loop) |
 
 ## 📂 Estructura del Proyecto
 
-- `src/App.tsx`: Motor de cálculo fiscal y lógica de UI.
-- `src/index.css`: Sistema de diseño basado en Tailwind y efectos Glassmorphism.
-- `docs/`: Manual de usuario y guía financiera para inversores.
+```
+src/
+├── App.tsx                          # Router principal (HeroSection → Dossier)
+├── main.tsx                         # Entry point
+├── index.css                        # Sistema de diseño global
+├── components/
+│   ├── AuditInput.tsx               # Input numérico con stepper +/-
+│   ├── ui/index.tsx                 # Componentes UI reutilizables
+│   ├── tenant/
+│   │   └── TenantDashboard.tsx      # Dossier de Inquilino
+│   ├── landlord/
+│   │   └── LandlordDashboard.tsx    # Dossier de Inversión
+│   └── layout/
+│       ├── HeroSection.tsx          # Landing con selector de dossier
+│       ├── TopNavbar.tsx            # Navegación superior
+│       └── Footer.tsx               # Pie de página
+├── lib/
+│   ├── tenant-engine.ts             # Motor de cálculo inquilino (Idealista 2018)
+│   ├── rental-engine.ts             # Motor de cálculo inversión + fiscal
+│   └── supabase.ts                  # Cliente Supabase (feedback)
+├── hooks/
+│   └── useMercadoReference.ts       # Hook de referencia de mercado (API local)
+└── store/
+    ├── useAppStore.ts               # Estado global (dark mode, tabs, export)
+    ├── useTenantStore.ts            # Estado del dossier inquilino
+    └── useLandlordStore.ts          # Estado del dossier inversión
+```
 
-## 🏃 Cómo empezar
+## 🚀 Cómo Empezar
 
-### Requisitos previos
-- [Node.js](https://nodejs.org/) (versión 18 o superior)
+### Requisitos
+- [Node.js](https://nodejs.org/) ≥ 18
 
 ### Instalación
-1. Clona el repositorio o abre la carpeta en tu terminal.
-2. Instala las dependencias:
-   ```bash
-   npm install
-   ```
+```bash
+npm install
+```
 
-### Ejecución
-Para iniciar el servidor de desarrollo:
+### Desarrollo
 ```bash
 npm run dev
 ```
-La aplicación estará disponible en `http://localhost:5173`.
+Disponible en `http://localhost:5173`
 
-### Construcción
-Para generar la versión optimizada de producción:
+### Build de producción
 ```bash
 npm run build
 ```
 
-## 📄 Documentación Complementaria
+### Deploy a Vercel
+El proyecto está configurado para deploy automático con Vercel. Framework: **Vite**.
+
+## 📄 Documentación
 - [Manual de Usuario](./docs/MANUAL_USUARIO.md)
 - [Guía del Inversor](./docs/GUIA_INVERSOR.md)
+- [Análisis Técnico de Cálculos](./ANALISIS_TECNICO_CALCULOS.md)
+- [Visión General del Proyecto](./PROJECT_OVERVIEW.md)
 
 ---
-Desarrollado con enfoque en la **precisión fiscal** y la **excelencia visual**.
+Desarrollado con enfoque en **precisión fiscal** y **excelencia visual**.

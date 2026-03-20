@@ -8,6 +8,9 @@ interface LandlordState {
 }
 
 const defaultInputs: RentalInputs = {
+  municipio: 'barcelona',
+  barrio: 'eixample',
+  habitaciones: 2,
   precioCompra: 200000,
   itpIva: 10,
   gastosEscritura: 2500,

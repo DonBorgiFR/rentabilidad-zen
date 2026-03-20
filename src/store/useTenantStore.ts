@@ -13,6 +13,8 @@ const defaultInputs: TenantInputs = {
   mesesFianza: 1,
   mesesGarantiaAdicional: 1,
   otrosGastosIniciales: 500,
+  municipio: 'barcelona',
+  barrio: 'eixample',
   metrosCuadrados: 80,
   zona: 'media',
   estado: 'bueno',

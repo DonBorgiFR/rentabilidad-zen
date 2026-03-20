@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { AreaChart, Area, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, ReferenceLine } from 'recharts';
 import { TrendingUp, Euro, Building, ShieldCheck } from 'lucide-react';
 import { useLandlordStore } from '../../store/useLandlordStore';
+import { usePrecioVentaRef } from '../../hooks/useMercadoReference';
 import { calculateRentalYield, calculateProjections } from '../../lib/rental-engine';
 import { AuditInput } from '../AuditInput';
 import { formatEuro, MetricTitle, InputSection, BooleanToggle } from '../ui';
@@ -14,6 +15,7 @@ function resultsToCapRate(noi: number, precioCompra: number) {
 export function LandlordDashboard() {
   const { inputs, updateInput } = useLandlordStore();
   const landlordResults = useMemo(() => calculateRentalYield(inputs), [inputs]);
+  const { data: refVenta } = usePrecioVentaRef(inputs.municipio, inputs.habitaciones, undefined, undefined, inputs.barrio);
   const isDark = document.documentElement.classList.contains('dark');
 
   const landlordExpensesData = [
@@ -168,9 +170,50 @@ export function LandlordDashboard() {
         </div>
       </div>
 
-      {/* Inputs Configuración */}
       <div className="flex flex-col gap-8">
-        <InputSection title="I. Capital Expenditure (CAPEX)" icon={<TrendingUp size={20}/>} defaultOpen={true}>
+        <InputSection title="I. Localización (Mercado Real)" icon={<Building size={20}/>} defaultOpen={true}>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Municipio</label>
+                  <input type="text" className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-xl p-3 font-bold text-slate-800 dark:text-white outline-none focus:border-emerald-500 transition-colors shadow-sm"
+                    value={inputs.municipio} onChange={e => updateInput('municipio', e.target.value)} placeholder="Ej: Barcelona"
+                  />
+              </div>
+              <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Barrio</label>
+                  <input type="text" className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-xl p-3 font-bold text-slate-800 dark:text-white outline-none focus:border-emerald-500 transition-colors shadow-sm"
+                    value={inputs.barrio || ''} onChange={e => updateInput('barrio', e.target.value)} placeholder="Ej: Eixample"
+                  />
+              </div>
+              <AuditInput label="Nº Habitaciones" step={1} min={1} value={inputs.habitaciones || 2} onChange={v => updateInput('habitaciones', v)} tooltip="Afecta a la comparativa de mercado."/>
+            </div>
+            
+            {refVenta && (
+              <div className="mt-6 text-sm font-bold text-slate-700 dark:text-slate-300 flex flex-col md:flex-row justify-between items-center bg-emerald-50/60 dark:bg-emerald-950/40 p-4 rounded-xl border border-emerald-200/40 dark:border-emerald-800/50 backdrop-blur-sm overflow-hidden relative">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-[40px] pointer-events-none" />
+                  <div className="flex flex-col relative z-10">
+                    <span className="text-emerald-800 dark:text-emerald-300 mb-1">Mercado Venta Real ({refVenta.zona}):</span>
+                    <span className="text-xs text-slate-500 font-medium tracking-wide">Basado en {refVenta.total_muestra} transacciones web analizadas</span>
+                  </div>
+                  <div className="flex gap-4 items-center relative z-10 mt-4 md:mt-0">
+                    <div className="flex flex-col items-center">
+                      <span className="text-[10px] text-slate-500 uppercase tracking-widest">P25 Barrio</span>
+                      <span className="text-sm font-black text-slate-700 dark:text-slate-300">{formatEuro(refVenta.precio_p25)}</span>
+                    </div>
+                    <div className="flex flex-col items-center bg-white/60 dark:bg-slate-900/50 px-4 py-2 rounded-xl shadow-sm border border-emerald-100 dark:border-emerald-900/50">
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Mediana Mº</span>
+                      <span className="text-lg font-black text-emerald-700 dark:text-emerald-400">{formatEuro(refVenta.precio_mediana)}</span>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <span className="text-[10px] text-slate-500 uppercase tracking-widest">P75 Barrio</span>
+                      <span className="text-sm font-black text-slate-700 dark:text-slate-300">{formatEuro(refVenta.precio_p75)}</span>
+                    </div>
+                  </div>
+              </div>
+            )}
+        </InputSection>
+
+        <InputSection title="II. Capital Expenditure (CAPEX)" icon={<TrendingUp size={20}/>} defaultOpen={true}>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
               <AuditInput label="Valor Base Compra" prefix="€" value={inputs.precioCompra} onChange={v => updateInput('precioCompra', v)} tooltip="El valor crudo registrado en escrituras. Base del ITP."/>
               <AuditInput label="Trasmisiones/IVA" suffix="%" value={inputs.itpIva} onChange={v => updateInput('itpIva', v)} step={0.5} tooltip="El porcentaje del ITP local (o 10% IVA para Nueva Construcción)."/>
@@ -179,7 +222,7 @@ export function LandlordDashboard() {
             </div>
         </InputSection>
         
-        <InputSection title="II. Operativa Anual Bruta" icon={<Euro size={20} />} defaultOpen={true}>
+        <InputSection title="III. Operativa Anual Bruta" icon={<Euro size={20} />} defaultOpen={true}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <AuditInput label="Aforo Renta Mensual" prefix="€" value={inputs.rentaMensual} onChange={v => updateInput('rentaMensual', v)} tooltip="Monto a solicitar en mercado." />
               <AuditInput label="Holgura / Vacancia" suffix="%" value={inputs.tasaVacancia} onChange={v => updateInput('tasaVacancia', v)} step={1} tooltip="Descuenta un margen anual de ingresos para prepararse contra meses nulos predecibles y cambio del inquilino." />
@@ -195,7 +238,7 @@ export function LandlordDashboard() {
             </div>
         </InputSection>
 
-        <InputSection title="III. Modelo de Apalancamiento D/E" icon={<Building size={20}/>}>
+        <InputSection title="IV. Modelo de Apalancamiento D/E" icon={<Building size={20}/>}>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
               <AuditInput label="Ratio Financiado (LTV)" suffix="%" value={inputs.ltv} onChange={v => updateInput('ltv', v)} step={5} tooltip="Porcentaje bancario inyectado por el prestamista (Ej: 80% lo fondea el banco, 20% es tu Equity inicial)." />
               <AuditInput label="TIN Ponderado" suffix="%" value={inputs.interes} onChange={v => updateInput('interes', v)} step={0.1} tooltip="Interés puro (TIN) del apalancamiento."/>
@@ -204,7 +247,7 @@ export function LandlordDashboard() {
             </div>
         </InputSection>
 
-        <InputSection title="IV. Estructura Fija OPEX y FISCALIDAD" icon={<ShieldCheck size={20}/>}>
+        <InputSection title="V. Estructura Fija OPEX y FISCALIDAD" icon={<ShieldCheck size={20}/>}>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               <AuditInput label="Comunidad/Seguridad" prefix="€" value={inputs.comunidad / 12} onChange={v => updateInput('comunidad', v * 12)} tooltip="Costo fijo comunal del inmueble anualizado para modelo." />
               <AuditInput label="Tributos Recurrentes" prefix="€" value={inputs.ibi} onChange={v => updateInput('ibi', v)} tooltip="Anualidad agregada de las obligaciones municipales y catastrales (IBI y Basuras locales)."/>

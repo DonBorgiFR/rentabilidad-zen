@@ -21,3 +21,17 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# AI / Agent tools
+.claude/
+.gemini/
+
+# Python virtual env
+.venv/
+
+# Local data & analysis
+rentabilidad-db/
+analisis_output/
+dataset 2018/
+planning-mode.txt
+Fast Prompt.txt

@@ -1,4 +1,8 @@
 export interface RentalInputs {
+  // --- LOCALIZACIÓN ---
+  municipio: string;
+  barrio?: string;
+  habitaciones?: number;
   // --- CAPEX (Adquisición) ---
   precioCompra: number;
   itpIva: number;
